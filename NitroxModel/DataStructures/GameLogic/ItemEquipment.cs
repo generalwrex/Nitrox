@@ -1,4 +1,4 @@
-﻿using ProtoBuf;
+﻿using ProtoBufNet;
 using System;
 
 namespace NitroxModel.DataStructures.GameLogic
@@ -10,14 +10,23 @@ namespace NitroxModel.DataStructures.GameLogic
         [ProtoMember(1)]
         public string Slot { get; }
 
-        public EquippedItemData(string containerGuid, string guid, byte[] serializedData, string slot) : base(containerGuid, guid, serializedData)
+        [ProtoMember(2)]
+        public TechType TechType { get; }
+
+        public EquippedItemData()
+        {
+            // For serialization
+        }
+
+        public EquippedItemData(NitroxId containerId, NitroxId itemId, byte[] serializedData, string slot, TechType techType) : base(containerId, itemId, serializedData)
         {
             Slot = slot;
+            TechType = techType;
         }
 
         public override string ToString()
         {
-            return "[EquippedItemData ContainerGuid: " + ContainerGuid + "Guid: " + Guid + " Slot: " + Slot + "]";
+            return "[EquippedItemData ContainerGuid: " + ContainerId + "Id: " + ItemId + " Slot: " + Slot + " TechType: " + TechType + "]";
         }
     }
 }

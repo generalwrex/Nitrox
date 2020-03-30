@@ -7,16 +7,19 @@ namespace NitroxModel.Core
 {
     public static class NitroxServiceLocator
     {
-        public static IContainer DependencyContainer { get; private set; }
-        public static ILifetimeScope CurrentLifetimeScope { get; private set; }
+        private static IContainer DependencyContainer { get; set; }
+        private static ILifetimeScope CurrentLifetimeScope { get; set; }
 
-        public static void InitializeDependencyContainer(IAutoFacRegistrar dependencyRegistrar)
+        public static void InitializeDependencyContainer(params IAutoFacRegistrar[] registrars)
         {
             ContainerBuilder builder = new ContainerBuilder();
-            dependencyRegistrar.RegisterDependencies(builder);
+            foreach (IAutoFacRegistrar registrar in registrars)
+            {
+                registrar.RegisterDependencies(builder);
+            }
 
-            //IgnoreStartableComponents - we don't want to cause "phantom" executions of the Start() method 
-            //on a Monobehaviour because someone accidentally did something funky with a DI registration.
+            // IgnoreStartableComponents - Prevents "phantom" executions of the Start() method 
+            // on a MonoBehaviour because someone accidentally did something funky with a DI registration.
             DependencyContainer = builder.Build(ContainerBuildOptions.IgnoreStartableComponents);
         }
 
@@ -34,6 +37,16 @@ namespace NitroxModel.Core
         public static void EndCurrentLifetimeScope()
         {
             CurrentLifetimeScope?.Dispose();
+        }
+
+        /// <summary>
+        ///     Only locates the service in the container, pre-lifetime scope.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <returns></returns>
+        public static T LocateServicePreLifetime<T>()
+        {
+            return DependencyContainer.Resolve<T>();
         }
 
         public static T LocateService<T>()
@@ -54,16 +67,10 @@ namespace NitroxModel.Core
         /// </summary>
         /// <typeparam name="T">Type of service to try to locate.</typeparam>
         /// <returns>Optional that might or might not hold the service instance.</returns>
-        public static Optional<T> LocateOptionalService<T>()
+        public static Optional<T> LocateOptionalService<T>() where T : class
         {
             CheckServiceResolutionViability();
-            T obj;
-            if (!CurrentLifetimeScope.TryResolve(out obj))
-            {
-                return Optional<T>.Empty();
-            }
-
-            return Optional<T>.Of(obj);
+            return Optional.OfNullable(CurrentLifetimeScope.ResolveOptional<T>());
         }
 
         /// <summary>
@@ -74,13 +81,7 @@ namespace NitroxModel.Core
         public static Optional<object> LocateOptionalService(Type serviceType)
         {
             CheckServiceResolutionViability();
-            object obj;
-            if (!CurrentLifetimeScope.TryResolve(serviceType, out obj))
-            {
-                return Optional<object>.Empty();
-            }
-
-            return Optional<object>.Of(obj);
+            return Optional.OfNullable(CurrentLifetimeScope.ResolveOptional(serviceType));
         }
 
         private static void CheckServiceResolutionViability()

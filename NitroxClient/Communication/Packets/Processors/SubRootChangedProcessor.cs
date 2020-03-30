@@ -1,6 +1,6 @@
 ﻿using NitroxClient.Communication.Packets.Processors.Abstract;
 using NitroxClient.GameLogic;
-using NitroxClient.GameLogic.Helper;
+using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Packets;
 using UnityEngine;
@@ -20,17 +20,17 @@ namespace NitroxClient.Communication.Packets.Processors
         {
             Optional<RemotePlayer> remotePlayer = remotePlayerManager.Find(packet.PlayerId);
 
-            if (remotePlayer.IsPresent())
+            if (remotePlayer.HasValue)
             {
                 SubRoot subRoot = null;
 
-                if (packet.SubRootGuid.IsPresent())
+                if (packet.SubRootId.HasValue)
                 {
-                    GameObject sub = GuidHelper.RequireObjectFrom(packet.SubRootGuid.Get());
+                    GameObject sub = NitroxEntity.RequireObjectFrom(packet.SubRootId.Value);
                     subRoot = sub.GetComponent<SubRoot>();
                 }
 
-                remotePlayer.Get().SetSubRoot(subRoot);
+                remotePlayer.Value.SetSubRoot(subRoot);
             }
         }
     }

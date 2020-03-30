@@ -8,9 +8,8 @@ namespace NitroxClient.MonoBehaviours
 {
     public class NitroxDebugManager : MonoBehaviour
     {
-        public readonly KeyCode EnableDebuggerHotkey = KeyCode.F7;
-
         public readonly List<BaseDebugger> Debuggers;
+        public readonly KeyCode EnableDebuggerHotkey = KeyCode.F7;
         private readonly HashSet<BaseDebugger> prevActiveDebuggers = new HashSet<BaseDebugger>();
         private bool isDebugging;
         private Rect windowRect;
@@ -20,8 +19,14 @@ namespace NitroxClient.MonoBehaviours
             Debuggers = new List<BaseDebugger>
             {
                 new SceneDebugger(),
-                new NetworkDebugger()
+                new NetworkDebugger(),
+                new EntityDebugger()
             };
+        }
+
+        public static void ToggleCursor()
+        {
+            UWE.Utils.lockCursor = !UWE.Utils.lockCursor;
         }
 
         public void OnGUI()
@@ -79,12 +84,11 @@ namespace NitroxClient.MonoBehaviours
             {
                 UWE.Utils.PopLockCursor();
                 HideDebuggers();
+                foreach (BaseDebugger baseDebugger in Debuggers)
+                {
+                    baseDebugger.ResetWindowPosition();
+                }
             }
-        }
-
-        public static void ToggleCursor()
-        {
-            UWE.Utils.lockCursor = !UWE.Utils.lockCursor;
         }
 
         private void DoWindow(int windowId)

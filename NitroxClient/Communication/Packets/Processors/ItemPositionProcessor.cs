@@ -1,6 +1,6 @@
 ﻿using NitroxClient.Communication.Packets.Processors.Abstract;
 using NitroxClient.GameLogic;
-using NitroxClient.GameLogic.Helper;
+using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Packets;
 using UnityEngine;
@@ -13,11 +13,11 @@ namespace NitroxClient.Communication.Packets.Processors
 
         public override void Process(ItemPosition drop)
         {
-            Optional<GameObject> opItem = GuidHelper.GetObjectFrom(drop.Guid);
+            Optional<GameObject> opItem = NitroxEntity.GetObjectFrom(drop.Id);
 
-            if (opItem.IsPresent())
+            if (opItem.HasValue)
             {
-                MovementHelper.MoveRotateGameObject(opItem.Get(), drop.Position, drop.Rotation, ITEM_TRANSFORM_SMOOTH_PERIOD);
+                MovementHelper.MoveRotateGameObject(opItem.Value, drop.Position, drop.Rotation, ITEM_TRANSFORM_SMOOTH_PERIOD);
             }
         }
     }

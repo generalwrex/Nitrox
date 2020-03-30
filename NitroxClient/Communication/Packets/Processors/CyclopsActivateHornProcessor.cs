@@ -1,8 +1,10 @@
-﻿using NitroxClient.Communication.Abstract;
+﻿using System.Reflection;
+using FMOD.Studio;
+using NitroxClient.Communication.Abstract;
 using NitroxClient.Communication.Packets.Processors.Abstract;
-using NitroxClient.GameLogic.Helper;
+using NitroxClient.MonoBehaviours;
 using NitroxClient.Unity.Helper;
-using NitroxModel.Packets;
+using NitroxModel_Subnautica.Packets;
 using UnityEngine;
 
 namespace NitroxClient.Communication.Packets.Processors
@@ -11,6 +13,8 @@ namespace NitroxClient.Communication.Packets.Processors
     {
         private readonly IPacketSender packetSender;
 
+        private readonly FieldInfo fieldInfo = typeof(FMOD_CustomEmitter).GetField("evt", BindingFlags.Instance | BindingFlags.NonPublic);
+
         public CyclopsActivateHornProcessor(IPacketSender packetSender)
         {
             this.packetSender = packetSender;
@@ -18,10 +22,14 @@ namespace NitroxClient.Communication.Packets.Processors
 
         public override void Process(CyclopsActivateHorn hornPacket)
         {
-            GameObject cyclops = GuidHelper.RequireObjectFrom(hornPacket.Guid);
-            CyclopsHornControl horn = cyclops.RequireComponent<CyclopsHornControl>();
+            GameObject cyclops = NitroxEntity.RequireObjectFrom(hornPacket.Id);
+            CyclopsHornControl horn = cyclops.RequireComponentInChildren<CyclopsHornControl>();
 
-            Utils.PlayEnvSound(horn.hornSound, horn.hornSound.gameObject.transform.position, 20f);
+            EventInstance eventInstance = (EventInstance)fieldInfo.GetValue(horn.hornSound);
+            eventInstance.setProperty(EVENT_PROPERTY.MAXIMUM_DISTANCE, 150f);
+            fieldInfo.SetValue(horn.hornSound, eventInstance);
+
+            horn.OnHandClick(null);
         }
     }
 }

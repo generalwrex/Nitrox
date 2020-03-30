@@ -1,6 +1,5 @@
-﻿
-using System;
-using ProtoBuf;
+﻿using System;
+using ProtoBufNet;
 
 namespace NitroxModel.DataStructures.GameLogic
 {
@@ -20,16 +19,29 @@ namespace NitroxModel.DataStructures.GameLogic
         [ProtoMember(4)]
         public float Food { get; }
 
-        [ProtoMember(4)]
+        [ProtoMember(5)]
         public float Water { get; }
+        [ProtoMember(6)]
+        public float InfectionAmount { get; }
 
-        public PlayerStatsData(float oxygen, float maxOxygen, float health, float food, float water)
+        public PlayerStatsData()
+        {
+            // For serialization purposes
+        }
+
+        public PlayerStatsData(float oxygen, float maxOxygen, float health, float food, float water, float infectionAmount)
         {
             Oxygen = oxygen;
             MaxOxygen = maxOxygen;
             Health = health;
             Food = food;
             Water = water;
+            InfectionAmount = infectionAmount;
+        }
+
+        public override string ToString()
+        {
+            return "[Oxygen: " + Oxygen + " MaxOxygen: " + MaxOxygen + " Health: " + Health + " Food: " + Food + " Water: " + Water + " InfectionAmount: " + InfectionAmount + " ]";
         }
     }
 }

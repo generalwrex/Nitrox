@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using NitroxClient.Communication.Abstract;
 using NitroxClient.GameLogic.Helper;
-using NitroxClient.GameLogic.Spawning;
+using NitroxClient.MonoBehaviours;
 using NitroxClient.Unity.Helper;
+using NitroxModel.DataStructures;
 using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Logger;
@@ -26,134 +26,119 @@ namespace NitroxClient.GameLogic
 
         public void BroadcastItemAdd(Pickupable pickupable, Transform ownerTransform)
         {
-            string ownerGuid = null;
+            NitroxId ownerId = null;
             bool isCyclopsLocker = Regex.IsMatch(ownerTransform.gameObject.name, @"Locker0([0-9])StorageRoot$", RegexOptions.IgnoreCase);
             bool isEscapePodStorage = ownerTransform.parent.name.StartsWith("EscapePod");
             if (isCyclopsLocker)
             {
-                ownerGuid = GetCyclopsLockerGuid(ownerTransform);
+                ownerId = GetCyclopsLockerId(ownerTransform);
             }
             else if (isEscapePodStorage)
             {
-                ownerGuid = GetEscapePodStorageGuid(ownerTransform);
+                ownerId = GetEscapePodStorageId(ownerTransform);
             }
             else
             {
-                ownerGuid = GuidHelper.GetGuid(ownerTransform.transform.parent.gameObject);
+                ownerId = NitroxEntity.GetId(ownerTransform.transform.parent.gameObject);
             }
 
-            string itemGuid = GuidHelper.GetGuid(pickupable.gameObject);
+            NitroxId itemId = NitroxEntity.GetId(pickupable.gameObject);
             byte[] bytes = SerializationHelper.GetBytes(pickupable.gameObject);
 
-            ItemData itemData = new ItemData(ownerGuid, itemGuid, bytes);
+            ItemData itemData = new ItemData(ownerId, itemId, bytes);
             ItemContainerAdd add = new ItemContainerAdd(itemData);
             packetSender.Send(add);
         }
 
         public void BroadcastItemRemoval(Pickupable pickupable, Transform ownerTransform)
         {
-            string ownerGuid = null;
+            NitroxId ownerId = null;
 
             bool isCyclopsLocker = Regex.IsMatch(ownerTransform.gameObject.name, @"Locker0([0-9])StorageRoot$", RegexOptions.IgnoreCase);
             bool isEscapePodStorage = ownerTransform.parent.name.StartsWith("EscapePod");
             if (isCyclopsLocker)
             {
-                ownerGuid = GetCyclopsLockerGuid(ownerTransform);
+                ownerId = GetCyclopsLockerId(ownerTransform);
             }
             else if (isEscapePodStorage)
             {
-                ownerGuid = GetEscapePodStorageGuid(ownerTransform);
+                ownerId = GetEscapePodStorageId(ownerTransform);
             }
             else
             {
-                ownerGuid = GuidHelper.GetGuid(ownerTransform.transform.parent.gameObject);
+                ownerId = NitroxEntity.GetId(ownerTransform.transform.parent.gameObject);
             }
 
-            string itemGuid = GuidHelper.GetGuid(pickupable.gameObject);
-            ItemContainerRemove remove = new ItemContainerRemove(ownerGuid, itemGuid);
+            NitroxId itemId = NitroxEntity.GetId(pickupable.gameObject);
+            ItemContainerRemove remove = new ItemContainerRemove(ownerId, itemId);
             packetSender.Send(remove);
         }
 
-        public void AddItem(GameObject item, string containerGuid)
+        public void AddItem(GameObject item, NitroxId containerId)
         {
-            Optional<GameObject> owner = GuidHelper.GetObjectFrom(containerGuid);
-
-            if (owner.IsEmpty())
+            Optional<GameObject> owner = NitroxEntity.GetObjectFrom(containerId);
+            if (!owner.HasValue)
             {
-                Log.Info("Unable to find inventory container with id: " + containerGuid);
+                Log.Info("Unable to find inventory container with id: " + containerId);
                 return;
             }
-
-            Optional<ItemsContainer> opContainer = InventoryContainerHelper.GetBasedOnOwnersType(owner.Get());
-
-            if (opContainer.IsPresent())
+            Optional<ItemsContainer> opContainer = InventoryContainerHelper.GetBasedOnOwnersType(owner.Value);
+            if (!opContainer.HasValue)
             {
-                ItemsContainer container = opContainer.Get();
-                Pickupable pickupable = item.RequireComponent<Pickupable>();
-
-                using (packetSender.Suppress<ItemContainerAdd>())
-                {
-                    container.UnsafeAdd(new InventoryItem(pickupable));
-                }
+                Log.Error("Could not find container field on object " + owner.Value.name);
+                return;
             }
-            else
+            
+            ItemsContainer container = opContainer.Value;
+            Pickupable pickupable = item.RequireComponent<Pickupable>();
+            using (packetSender.Suppress<ItemContainerAdd>())
             {
-                Log.Error("Could not find container field on object " + owner.Get().name);
+                container.UnsafeAdd(new InventoryItem(pickupable));
             }
         }
         
-        public void RemoveItem(string ownerGuid, string itemGuid)
+        public void RemoveItem(NitroxId ownerId, NitroxId itemId)
         {
-            GameObject owner = GuidHelper.RequireObjectFrom(ownerGuid);
-            GameObject item = GuidHelper.RequireObjectFrom(itemGuid);
+            GameObject owner = NitroxEntity.RequireObjectFrom(ownerId);
+            GameObject item = NitroxEntity.RequireObjectFrom(itemId);
             Optional<ItemsContainer> opContainer = InventoryContainerHelper.GetBasedOnOwnersType(owner);
-
-            if (opContainer.IsPresent())
-            {
-                ItemsContainer container = opContainer.Get();
-                Pickupable pickupable = item.RequireComponent<Pickupable>();
-
-                using (packetSender.Suppress<ItemContainerRemove>())
-                {
-                    container.RemoveItem(pickupable, true);
-                }
-            }
-            else
+            if (!opContainer.HasValue)
             {
                 Log.Error("Could not find container field on object " + owner.name);
+                return;
+            }
+            
+            ItemsContainer container = opContainer.Value;
+            Pickupable pickupable = item.RequireComponent<Pickupable>();
+            using (packetSender.Suppress<ItemContainerRemove>())
+            {
+                container.RemoveItem(pickupable, true);
             }
         }
 
-        public string GetCyclopsLockerGuid(Transform ownerTransform)
+        public NitroxId GetCyclopsLockerId(Transform ownerTransform)
         {
             string LockerId = ownerTransform.gameObject.name.Substring(7, 1);
-
             GameObject locker = ownerTransform.parent.gameObject.FindChild("submarine_locker_01_0" + LockerId);
+            
             if (locker != null)
             {
                 StorageContainer SC = locker.GetComponentInChildren<StorageContainer>();
-
                 if (SC != null)
                 {
-                    return GuidHelper.GetGuid(SC.gameObject);
+                    return NitroxEntity.GetId(SC.gameObject);
                 }
-                else
-                {
-                    throw new Exception("Could not find StorageContainer From Object: submarine_locker_01_0" + LockerId);
-                }
+                throw new Exception("Could not find StorageContainer From Object: submarine_locker_01_0" + LockerId);
 
             }
-            else
-            {
-                throw new Exception("Could not find Locker Object: submarine_locker_01_0" + LockerId);
-            }
+            throw new Exception("Could not find Locker Object: submarine_locker_01_0" + LockerId);
 
         }
 
-        public string GetEscapePodStorageGuid(Transform ownerTransform)
+        public NitroxId GetEscapePodStorageId(Transform ownerTransform)
         {
             StorageContainer SC = ownerTransform.parent.gameObject.RequireComponentInChildren<StorageContainer>();
-            return GuidHelper.GetGuid(SC.gameObject);
+            return NitroxEntity.GetId(SC.gameObject);
         }
     }
 }

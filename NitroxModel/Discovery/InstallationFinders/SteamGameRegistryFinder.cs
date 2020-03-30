@@ -11,32 +11,32 @@ namespace NitroxModel.Discovery.InstallationFinders
         public const int SUBNAUTICA_APP_ID = 264710;
         public const string SUBNAUTICA_GAME_NAME = "Subnautica";
 
-        public Optional<string> FindGame(List<string> errors)
+        public Optional<string> FindGame(List<string> errors = null)
         {
             string steamPath = (string)ReadRegistrySafe("Software\\Valve\\Steam", "SteamPath");
             if (string.IsNullOrEmpty(steamPath))
             {
-                errors.Add("It appears you don't have Steam installed.");
-                return Optional<string>.Empty();
+                errors?.Add("It appears you don't have Steam installed.");
+                return Optional.Empty;
             }
 
             string appsPath = Path.Combine(steamPath, "steamapps");
             if (File.Exists(Path.Combine(appsPath, $"appmanifest_{SUBNAUTICA_APP_ID}.acf")))
             {
-                return Optional<string>.Of(Path.Combine(Path.Combine(appsPath, "common"), SUBNAUTICA_GAME_NAME));
+                return Optional.Of(Path.Combine(appsPath, "common", SUBNAUTICA_GAME_NAME));
             }
 
             string path = SearchAllInstallations(Path.Combine(appsPath, "libraryfolders.vdf"), SUBNAUTICA_APP_ID, SUBNAUTICA_GAME_NAME);
             if (string.IsNullOrEmpty(path))
             {
-                errors.Add($"It appears you don't have {SUBNAUTICA_GAME_NAME} installed anywhere. The game files are needed to run the server.");
+                errors?.Add($"It appears you don't have {SUBNAUTICA_GAME_NAME} installed anywhere. The game files are needed to run the server.");
             }
             else
             {
-                return Optional<string>.Of(path);
+                return Optional.Of(path);
             }
 
-            return Optional<string>.Empty();
+            return Optional.Empty;
         }
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace NitroxModel.Discovery.InstallationFinders
                 {
                     if (File.Exists(Path.Combine(value, $"steamapps/appmanifest_{appid}.acf")))
                     {
-                        return Path.Combine(Path.Combine(value, "steamapps/common"), gameName);
+                        return Path.Combine(value, "steamapps/common", gameName);
                     }
                 }
             }

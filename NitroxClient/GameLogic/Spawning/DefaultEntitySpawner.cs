@@ -1,6 +1,7 @@
-﻿using NitroxClient.GameLogic.Helper;
+﻿using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
+using NitroxModel_Subnautica.Helper;
 using UnityEngine;
 using UWE;
 
@@ -8,36 +9,43 @@ namespace NitroxClient.GameLogic.Spawning
 {
     public class DefaultEntitySpawner : IEntitySpawner
     {
-        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent)
+        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
         {
+            TechType techType = entity.TechType.Enum();
             GameObject prefab;
-
-            if (!PrefabDatabase.TryGetPrefab(entity.ClassId, out prefab))
+            IPrefabRequest prefabRequest = PrefabDatabase.GetPrefabAsync(entity.ClassId);
+            if (!prefabRequest.TryGetPrefab(out prefab)) // I realize its more code but Sorry couldnt stand all the warnings
             {
-                prefab = CraftData.GetPrefabForTechType(entity.TechType, false);
+                prefab = CraftData.GetPrefabForTechType(techType, false);
                 if (prefab == null)
                 {
-                    return Optional<GameObject>.Of(Utils.CreateGenericLoot(entity.TechType));
+                    return Optional.Of(Utils.CreateGenericLoot(techType));
                 }
             }
 
             GameObject gameObject = Utils.SpawnFromPrefab(prefab, null);
-            gameObject.transform.position = entity.Position;
-            gameObject.transform.localScale = entity.Scale;
+            gameObject.transform.position = entity.Transform.Position;
+            gameObject.transform.rotation = entity.Transform.Rotation;
+            gameObject.transform.localScale = entity.Transform.LocalScale;
 
-            if (parent.IsPresent())
+            NitroxEntity.SetNewId(gameObject, entity.Id);
+            CrafterLogic.NotifyCraftEnd(gameObject, techType);
+
+            if (parent.HasValue)
             {
-                gameObject.transform.SetParent(parent.Get().transform, true);
+                gameObject.transform.SetParent(parent.Value.transform, true);
             }
 
-            gameObject.transform.localRotation = entity.Rotation;
-            GuidHelper.SetNewGuid(gameObject, entity.Guid);
-            gameObject.SetActive(true);
+            if (parent.HasValue && parent.Value.GetComponent<LargeWorldEntityCell>() != null)
+            {
+                LargeWorldEntity.Register(gameObject); // This calls SetActive on the GameObject
+            }
+            else
+            {
+                gameObject.SetActive(true);
+            }
 
-            LargeWorldEntity.Register(gameObject);
-            CrafterLogic.NotifyCraftEnd(gameObject, entity.TechType);
-
-            return Optional<GameObject>.Of(gameObject);
+            return Optional.Of(gameObject);
         }
 
         public bool SpawnsOwnChildren()

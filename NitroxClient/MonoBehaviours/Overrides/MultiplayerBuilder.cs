@@ -1,4 +1,5 @@
 ﻿#pragma warning disable // Disable all warnings for copied file
+// ReSharper disable InconsistentNaming
 
 using System.Collections.Generic;
 using NitroxModel.DataStructures.Util;
@@ -7,6 +8,8 @@ using NitroxModel.Logger;
 using UnityEngine;
 using UWE;
 using NitroxModel.DataStructures.GameLogic.Buildings.Rotation;
+using NitroxModel_Subnautica.DataStructures.GameLogic.Buildings.Rotation;
+using NitroxModel_Subnautica.Helper.Int3;
 
 namespace NitroxClient.MonoBehaviours.Overrides
 {
@@ -142,7 +145,6 @@ namespace NitroxClient.MonoBehaviours.Overrides
                 MultiplayerBuilder.ghostModelRotation = Quaternion.identity;
                 MultiplayerBuilder.ghostModelScale = Vector3.one;
                 MultiplayerBuilder.renderers = MaterialExtensions.AssignMaterial(MultiplayerBuilder.ghostModel, MultiplayerBuilder.ghostStructureMaterial);
-                MaterialExtensions.SetLocalScale(MultiplayerBuilder.renderers);
                 MultiplayerBuilder.InitBounds(MultiplayerBuilder.ghostModel);
             }
             else
@@ -162,7 +164,6 @@ namespace NitroxClient.MonoBehaviours.Overrides
                 }
 
                 MultiplayerBuilder.renderers = MaterialExtensions.AssignMaterial(MultiplayerBuilder.ghostModel, MultiplayerBuilder.ghostStructureMaterial);
-                MaterialExtensions.SetLocalScale(MultiplayerBuilder.renderers);
                 MultiplayerBuilder.SetupRenderers(MultiplayerBuilder.ghostModel, Player.main.IsInSub());
                 MultiplayerBuilder.CreatePowerPreview(MultiplayerBuilder.constructableTechType, MultiplayerBuilder.ghostModel);
                 MultiplayerBuilder.InitBounds(MultiplayerBuilder.prefab);
@@ -183,13 +184,14 @@ namespace NitroxClient.MonoBehaviours.Overrides
                 Transform transform = componentInParent.transform;
                 transform.position = MultiplayerBuilder.placePosition;
                 transform.rotation = MultiplayerBuilder.placeRotation;
-                flag2 = componentInParent.UpdateGhostModel(MultiplayerBuilder.GetAimTransform(), MultiplayerBuilder.ghostModel, default(RaycastHit), out flag);
 
-                if(rotationMetadata.IsPresent())
+                flag2 = componentInParent.UpdateGhostModel(MultiplayerBuilder.GetAimTransform(), MultiplayerBuilder.ghostModel, default(RaycastHit), out flag, componentInParent);
+
+                if (rotationMetadata.HasValue)
                 {
-                    ApplyRotationMetadata(MultiplayerBuilder.ghostModel, rotationMetadata.Get());
+                    ApplyRotationMetadata(MultiplayerBuilder.ghostModel, rotationMetadata.Value);
                 }
-                
+
                 if (flag)
                 {
                     MultiplayerBuilder.renderers = MaterialExtensions.AssignMaterial(MultiplayerBuilder.ghostModel, MultiplayerBuilder.ghostStructureMaterial);
@@ -201,7 +203,7 @@ namespace NitroxClient.MonoBehaviours.Overrides
             {
                 List<GameObject> list = new List<GameObject>();
                 MultiplayerBuilder.GetObstacles(MultiplayerBuilder.placePosition, MultiplayerBuilder.placeRotation, MultiplayerBuilder.bounds, list);
-                flag2 = (list.Count == 0);
+                flag2 = list.Count == 0;
                 list.Clear();
             }
 
@@ -243,8 +245,17 @@ namespace NitroxClient.MonoBehaviours.Overrides
                 mapRoom.ReflectionSet("connectionMask", mapRoomRotationMetadata.ConnectionMask);
 
                 Base ghostBase = (Base)mapRoom.ReflectionGet("ghostBase");
-                ghostBase.SetCell(Int3.zero, mapRoomRotationMetadata.CellType);
+                
+                ghostBase.SetCell(Int3.zero, (Base.CellType)mapRoomRotationMetadata.CellType);
                 mapRoom.ReflectionCall("RebuildGhostGeometry");
+            }
+            else if (component is BaseAddModuleGhost)
+            {
+                BaseModuleRotationMetadata baseModuleRotationMetadata = (rotationMetadata as BaseModuleRotationMetadata);
+                BaseAddModuleGhost module = (component as BaseAddModuleGhost);
+
+                module.anchoredFace = new Base.Face(baseModuleRotationMetadata.Cell.Global(), (Base.Direction)baseModuleRotationMetadata.Direction);
+                module.ReflectionCall("RebuildGhostGeometry");
             }
         }
 
@@ -938,7 +949,6 @@ namespace NitroxClient.MonoBehaviours.Overrides
             if (gameObject != null)
             {
                 PowerRelay component = gameObject.GetComponent<PowerRelay>();
-                global::Utils.Assert(component != null, "see log", null);
                 if (component.powerFX != null && component.powerFX.attachPoint != null)
                 {
                     PowerFX powerFX = ghostModel.AddComponent<PowerFX>();

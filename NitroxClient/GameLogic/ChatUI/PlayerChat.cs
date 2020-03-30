@@ -1,51 +1,67 @@
-﻿using NitroxClient.MonoBehaviours.Gui.Chat;
+﻿using System;
+using NitroxClient.MonoBehaviours.Gui.Chat;
+using NitroxModel.Helper;
 using UnityEngine;
 
 namespace NitroxClient.GameLogic.ChatUI
 {
-    public class PlayerChat
+    internal class PlayerChat
     {
-        /// <summary>
-        ///     The Unity object that holds a record of what was said in-game.
-        /// </summary>
-        private static PlayerChatLog chatLog;
+        private static PlayerChat instance;
+        private readonly Lazy<PlayerChatLog> chatLog;
+        private readonly Lazy<PlayerChatInputField> inputField;
 
         /// <summary>
         ///     A text box where the player can enter something to add to the chat log.
         /// </summary>
-        private static PlayerChatEntry chatEntry;
+        public PlayerChatInputField InputField => inputField.Value;
+
+        /// <summary>
+        ///     The Unity object that holds a record of what was said in-game.
+        /// </summary>
+        public PlayerChatLog ChatLog => chatLog.Value;
 
         public PlayerChat()
         {
-            if (chatLog == null)
+            if (NitroxEnvironment.IsNormal && instance != null)
             {
-                chatLog = new GameObject().AddComponent<PlayerChatLog>();
+                throw new Exception($"There must only be one {nameof(PlayerChat)} instance.");
             }
-
-            if (chatEntry == null)
+            instance = this;
+            chatLog = new Lazy<PlayerChatLog>(() =>
             {
-                chatEntry = new GameObject().AddComponent<PlayerChatEntry>();
-            }
+                PlayerChatLog chatlog = new GameObject().AddComponent<PlayerChatLog>();
+                chatlog.Manager = this;
+                return chatlog;
+            });
+            inputField = new Lazy<PlayerChatInputField>(() =>
+            {
+                PlayerChatInputField inputfield = new GameObject().AddComponent<PlayerChatInputField>();
+                inputfield.Manager = this;
+                return inputfield;
+            });
         }
 
-        public void WriteChatLogEntry(ChatLogEntry chatLogEntry)
+        public void AddMessage(string playerName, string message, Color color)
         {
-            chatLog.WriteEntry(chatLogEntry);
+            ChatLogEntry entry = new ChatLogEntry(playerName, message, color);
+            ChatLog.WriteEntry(entry);
         }
 
         public void ShowLog()
         {
-            chatLog.Show();
+            ChatLog.Show();
         }
 
         public void HideLog()
         {
-            chatLog.Hide();
+            ChatLog.Hide();
         }
 
         public void ShowChat()
         {
-            chatEntry.Show(this);
+            ShowLog();
+            InputField.ChatEnabled = true;
         }
     }
 }

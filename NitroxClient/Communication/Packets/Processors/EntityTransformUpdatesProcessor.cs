@@ -1,5 +1,5 @@
 ﻿using NitroxClient.Communication.Packets.Processors.Abstract;
-using NitroxClient.GameLogic.Helper;
+using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Packets;
 using UnityEngine;
@@ -13,24 +13,24 @@ namespace NitroxClient.Communication.Packets.Processors
         {
             foreach (EntityTransformUpdate entity in packet.Updates)
             {
-                Optional<GameObject> opGameObject = GuidHelper.GetObjectFrom(entity.Guid);
-
-                if (opGameObject.IsPresent())
+                Optional<GameObject> opGameObject = NitroxEntity.GetObjectFrom(entity.Id);
+                if (!opGameObject.HasValue)
                 {
-                    GameObject gameObject = opGameObject.Get();
+                    continue;
+                }
+                
+                GameObject gameObject = opGameObject.Value;
+                float distance = Vector3.Distance(gameObject.transform.position, entity.Position);
+                SwimBehaviour swimBehaviour = gameObject.GetComponent<SwimBehaviour>();
 
-                    float distance = Vector3.Distance(gameObject.transform.position, entity.Position);
-                    SwimBehaviour swimBehaviour = gameObject.GetComponent<SwimBehaviour>();
-
-                    if (distance > 5 || swimBehaviour == null)
-                    {
-                        gameObject.transform.position = entity.Position;
-                        gameObject.transform.rotation = entity.Rotation;
-                    }
-                    else
-                    {
-                        swimBehaviour.SwimTo(entity.Position, 3f);
-                    }
+                if (distance > 5 || swimBehaviour == null)
+                {
+                    gameObject.transform.position = entity.Position;
+                    gameObject.transform.rotation = entity.Rotation;
+                }
+                else
+                {
+                    swimBehaviour.SwimTo(entity.Position, 3f);
                 }
             }
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -21,7 +22,7 @@ namespace NitroxServer
 
                 PrintIfExternal();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // This is technically an error but will scare most users into thinking the server is not working
                 // generally this can happen on Mac / Wine due to issues fetching networking interfaces.  Simply
@@ -30,27 +31,27 @@ namespace NitroxServer
             }
         }
 
-        private static void PrintIfHamachi(NetworkInterface _interface)
+        private static void PrintIfHamachi(NetworkInterface netInterface)
         {
-            if (_interface.Name != "Hamachi")
+            if (netInterface.Name != "Hamachi")
             {
                 return;
             }
 
-            var ips = _interface.GetIPProperties().UnicastAddresses
+            IEnumerable<string> ips = netInterface.GetIPProperties().UnicastAddresses
                 .Select(address => address.Address.ToString())
                 .Where(address => !address.ToString().Contains("fe80::"));
             Log.Info("If using Hamachi, use this IP: " + string.Join(" or ", ips));
         }
 
-        private static void PrintIfLan(NetworkInterface _interface)
+        private static void PrintIfLan(NetworkInterface netInterface)
         {
-            if (_interface.GetIPProperties().GatewayAddresses.Count == 0)
+            if (netInterface.GetIPProperties().GatewayAddresses.Count == 0)
             {
                 return;
             }
 
-            foreach (UnicastIPAddressInformation eachIp in _interface.GetIPProperties().UnicastAddresses)
+            foreach (UnicastIPAddressInformation eachIp in netInterface.GetIPProperties().UnicastAddresses)
             {
                 string[] splitIpParts = eachIp.Address.ToString().Split('.');
                 int secondPart = 0;
@@ -85,7 +86,7 @@ namespace NitroxServer
             using (WebClient client = new WebClient())
             {
                 client.DownloadStringCompleted += ExternalIpStringDownloadCompleted;
-                client.DownloadStringAsync(new Uri("http://ipv4bot.whatismyipaddress.com/")); // from https://stackoverflow.com/questions/3253701/get-public-external-ip-address answer by user_v
+                client.DownloadStringAsync(new Uri("https://ipv4bot.whatismyipaddress.com/")); // from https://stackoverflow.com/questions/3253701/get-public-external-ip-address answer by user_v
             }
         }
 

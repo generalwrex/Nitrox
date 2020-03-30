@@ -1,7 +1,5 @@
 ﻿using NitroxModel.DataStructures.Util;
-using NitroxModel.Logger;
-using NitroxModel.Packets;
-using ProtoBuf;
+using ProtoBufNet;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,7 +14,7 @@ namespace NitroxModel.DataStructures.GameLogic
         public TechType TechType { get; }
 
         [ProtoMember(2)]
-        public string Guid { get; set; }
+        public NitroxId Id { get; set; }
 
         [ProtoMember(3)]
         public Vector3 Position { get; set; }
@@ -25,18 +23,10 @@ namespace NitroxModel.DataStructures.GameLogic
         public Quaternion Rotation { get; set; }
 
         [ProtoMember(5)]
-        public List<InteractiveChildObjectIdentifier> SerializableInteractiveChildIdentifiers
-        {
-            get { return (InteractiveChildIdentifiers.IsPresent()) ? InteractiveChildIdentifiers.Get() : null; }
-            set { InteractiveChildIdentifiers = Optional<List<InteractiveChildObjectIdentifier>>.OfNullable(value); }
-        }
+        public List<InteractiveChildObjectIdentifier> InteractiveChildIdentifiers { get; set; } = new List<InteractiveChildObjectIdentifier>();
 
         [ProtoMember(6)]
-        public string SerializableDockingBayGuid
-        {
-            get { return (DockingBayGuid.IsPresent()) ? DockingBayGuid.Get() : null; }
-            set { DockingBayGuid = Optional<string>.OfNullable(value); }
-        }
+        public Optional<NitroxId> DockingBayId { get; set; }
 
         [ProtoMember(7)]
         public string Name { get; set; }
@@ -47,29 +37,27 @@ namespace NitroxModel.DataStructures.GameLogic
         [ProtoMember(9)]
         public Vector3[] Colours { get; set; }
 
-        [ProtoIgnore]
-        public Optional<List<InteractiveChildObjectIdentifier>> InteractiveChildIdentifiers { get; set; }
-
-        [ProtoIgnore]
-        public Optional<string> DockingBayGuid { get; set; }
+        [ProtoMember(10)]
+        public float Health { get; set; } = 1;
 
         public VehicleModel()
         {
-            InteractiveChildIdentifiers = Optional<List<InteractiveChildObjectIdentifier>>.Empty();
-            DockingBayGuid = Optional<string>.Empty();
+            InteractiveChildIdentifiers = new List<InteractiveChildObjectIdentifier>();
+            DockingBayId = Optional.Empty;
         }
 
-        public VehicleModel(TechType techType, string guid, Vector3 position, Quaternion rotation, Optional<List<InteractiveChildObjectIdentifier>> interactiveChildIdentifiers, Optional<string> dockingBayGuid, string name, Vector3[] hsb, Vector3[] colours)
+        public VehicleModel(TechType techType, NitroxId id, Vector3 position, Quaternion rotation, List<InteractiveChildObjectIdentifier> interactiveChildIdentifiers, Optional<NitroxId> dockingBayId, string name, Vector3[] hsb, Vector3[] colours, float health)
         {
             TechType = techType;
-            Guid = guid;
+            Id = id;
             Position = position;
             Rotation = rotation;
             InteractiveChildIdentifiers = interactiveChildIdentifiers;
-            DockingBayGuid = dockingBayGuid;
+            DockingBayId = dockingBayId;
             Name = name;
             HSB = hsb;
             Colours = colours;
+            Health = health;
         }
     }
 }

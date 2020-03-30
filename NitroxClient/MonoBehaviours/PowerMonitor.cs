@@ -4,8 +4,8 @@ using System.Diagnostics;
 using System.Reflection;
 using NitroxClient.Communication.Packets.Processors;
 using NitroxClient.GameLogic;
-using NitroxClient.GameLogic.Helper;
 using NitroxModel.Core;
+using NitroxModel.DataStructures;
 using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.Logger;
 using UnityEngine;
@@ -78,8 +78,8 @@ namespace NitroxClient.MonoBehaviours
 
                 if (runningDelta != 0)
                 {
-                    string guid = GuidHelper.GetGuid(gameObject);
-                    powerBoardcaster.ChargeChanged(guid, runningDelta, PowerType.ENERGY_INTERFACE);
+                    NitroxId id = NitroxEntity.GetId(gameObject);
+                    powerBoardcaster.ChargeChanged(id, runningDelta, PowerType.ENERGY_INTERFACE);
                     runningDelta = 0;
                 }
             }

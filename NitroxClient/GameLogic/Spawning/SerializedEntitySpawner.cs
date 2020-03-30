@@ -1,31 +1,36 @@
 ﻿using NitroxClient.GameLogic.Helper;
 using NitroxClient.GameLogic.ItemDropActions;
+using NitroxClient.MonoBehaviours;
 using NitroxClient.Unity.Helper;
+using NitroxModel.DataStructures;
 using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Logger;
+using NitroxModel_Subnautica.Helper;
 using UnityEngine;
 
 namespace NitroxClient.GameLogic.Spawning
 {
     public class SerializedEntitySpawner : IEntitySpawner
     {
-        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent)
+        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
         {
             GameObject gameObject = SerializationHelper.GetGameObject(entity.SerializedGameObject);
-            gameObject.transform.position = entity.Position;
-            gameObject.transform.rotation = entity.Rotation;
-            gameObject.transform.localScale = entity.Scale;
+            gameObject.transform.position = entity.Transform.Position;
+            gameObject.transform.rotation = entity.Transform.Rotation;
+            gameObject.transform.localScale = entity.Transform.LocalScale;
             
-            if (entity.WaterParkGuid != null)
+            if (entity.WaterParkId != null)
             {
-                AssignToWaterPark(gameObject, entity.WaterParkGuid);
+                AssignToWaterPark(gameObject, entity.WaterParkId);
             }
 
             EnableRigidBody(gameObject);
-            ExecuteDropItemAction(entity.TechType, gameObject);
+            ExecuteDropItemAction(entity.TechType.Enum(), gameObject);
 
-            return Optional<GameObject>.Of(gameObject);
+            NitroxEntity.SetNewId(gameObject, entity.Id);
+
+            return Optional.Of(gameObject);
         }
 
         public bool SpawnsOwnChildren()
@@ -42,10 +47,10 @@ namespace NitroxClient.GameLogic.Spawning
         // The next two functions could potentially reside outside of this specific serializer.  
         // They only happen to be in here because dropped items use this code path.
 
-        private void AssignToWaterPark(GameObject gameObject, string waterParkGuid)
+        private void AssignToWaterPark(GameObject gameObject, NitroxId waterParkId)
         {
             Pickupable pickupable = gameObject.RequireComponent<Pickupable>();
-            GameObject waterParkGo = GuidHelper.RequireObjectFrom(waterParkGuid);
+            GameObject waterParkGo = NitroxEntity.RequireObjectFrom(waterParkId);
             WaterPark waterPark = waterParkGo.RequireComponent<WaterPark>();
 
             waterPark.AddItem(pickupable);

@@ -1,6 +1,7 @@
 ﻿using NitroxModel.DataStructures.GameLogic;
 using ProtoBufNet;
 using System.Collections.Generic;
+using TechTypeModel = NitroxModel.DataStructures.TechType;
 
 namespace NitroxServer.GameLogic.Unlockables
 {
@@ -8,7 +9,7 @@ namespace NitroxServer.GameLogic.Unlockables
     public class PDAStateData
     {
         [ProtoMember(1)]
-        public List<TechType> SerializedUnlockedTechTypes
+        public List<TechTypeModel> SerializedUnlockedTechTypes
         {
             get
             {
@@ -21,7 +22,7 @@ namespace NitroxServer.GameLogic.Unlockables
         }
 
         [ProtoMember(2)]
-        public List<TechType> SerializedKnownTechTypes
+        public List<TechTypeModel> SerializedKnownTechTypes
         {
             get
             {
@@ -53,19 +54,27 @@ namespace NitroxServer.GameLogic.Unlockables
             {
                 lock (partiallyUnlockedByTechType)
                 {
-                    return new List<PDAEntry>(partiallyUnlockedByTechType.Values);
+                    serializedPartiallyUnlockedByTechType = new List<PDAEntry>(partiallyUnlockedByTechType.Values);
+                    return serializedPartiallyUnlockedByTechType;
                 }
             }
             set
             {
-                partiallyUnlockedByTechType = new Dictionary<TechType, PDAEntry>();
-
-                foreach (PDAEntry entry in value)
+                lock (partiallyUnlockedByTechType)
                 {
-                    partiallyUnlockedByTechType.Add(entry.TechType, entry);
+                    partiallyUnlockedByTechType = new Dictionary<TechTypeModel, PDAEntry>();
+
+                    foreach (PDAEntry entry in value)
+                    {
+                        partiallyUnlockedByTechType.Add(entry.TechType, entry);
+                    }
                 }
+
+                serializedPartiallyUnlockedByTechType = value;
             }
         }
+
+        private List<PDAEntry> serializedPartiallyUnlockedByTechType = new List<PDAEntry>();
 
         [ProtoMember(5)]
         public List<PDALogEntry> SerializedPDALog
@@ -81,21 +90,21 @@ namespace NitroxServer.GameLogic.Unlockables
         }
 
         [ProtoIgnore]
-        private List<TechType> unlockedTechTypes = new List<TechType>();
+        private List<TechTypeModel> unlockedTechTypes = new List<TechTypeModel>();
 
         [ProtoIgnore]
-        private List<TechType> knownTechTypes = new List<TechType>();
+        private List<TechTypeModel> knownTechTypes = new List<TechTypeModel>();
 
         [ProtoIgnore]
         private List<string> encyclopediaEntries = new List<string>();
 
         [ProtoIgnore]
-        private Dictionary<TechType, PDAEntry> partiallyUnlockedByTechType = new Dictionary<TechType, PDAEntry>();
+        private Dictionary<TechTypeModel, PDAEntry> partiallyUnlockedByTechType = new Dictionary<TechTypeModel, PDAEntry>();
 
         [ProtoIgnore]
         private List<PDALogEntry> pdaLogEntries = new List<PDALogEntry>();
 
-        public void UnlockedTechType(TechType techType)
+        public void UnlockedTechType(TechTypeModel techType)
         {
             lock(unlockedTechTypes)
             {
@@ -107,7 +116,7 @@ namespace NitroxServer.GameLogic.Unlockables
             }
         }
 
-        public void AddKnownTechType(TechType techType)
+        public void AddKnownTechType(TechTypeModel techType)
         {
             lock (knownTechTypes)
             {
@@ -131,7 +140,7 @@ namespace NitroxServer.GameLogic.Unlockables
             }
         }
 
-        public void EntryProgressChanged(TechType techType, float progress, int unlocked)
+        public void EntryProgressChanged(TechTypeModel techType, float progress, int unlocked)
         {
             lock (partiallyUnlockedByTechType)
             {
@@ -147,7 +156,7 @@ namespace NitroxServer.GameLogic.Unlockables
             }
         }
 
-        public InitialPdaData GetInitialPdaData()
+        public InitialPDAData GetInitialPDAData()
         {
             lock (unlockedTechTypes)
             {
@@ -159,14 +168,27 @@ namespace NitroxServer.GameLogic.Unlockables
                         {
                             lock (pdaLogEntries)
                             {
-                                return new InitialPdaData(new List<TechType>(unlockedTechTypes),
-                                                          new List<TechType>(knownTechTypes),
+                                return new InitialPDAData(new List<TechTypeModel>(unlockedTechTypes),
+                                                          new List<TechTypeModel>(knownTechTypes),
                                                           new List<string>(encyclopediaEntries),
                                                           new List<PDAEntry>(partiallyUnlockedByTechType.Values),
                                                           new List<PDALogEntry>(pdaLogEntries));
                             }
                         }
                     }
+                }
+            }
+        }
+
+        [ProtoAfterDeserialization]
+        private void AfterDeserialization()
+        {
+            lock (partiallyUnlockedByTechType)
+            {
+                partiallyUnlockedByTechType = new Dictionary<TechTypeModel, PDAEntry>();
+                foreach (PDAEntry entry in serializedPartiallyUnlockedByTechType)
+                {
+                    partiallyUnlockedByTechType.Add(entry.TechType, entry);
                 }
             }
         }

@@ -8,43 +8,18 @@ namespace NitroxServer.GameLogic.Items
     public class InventoryData
     {
         [ProtoMember(1)]
-        public Dictionary<string, ItemData> SerializableInsertedInventoryItemsByGuid
-        {
-            get
-            {
-                lock (insertedInventoryItemsByGuid)
-                {
-                    return new Dictionary<string, ItemData>(insertedInventoryItemsByGuid);
-                }
-            }
-            set { insertedInventoryItemsByGuid = value; }
-        }
+        public List<ItemData> InventoryItems = new List<ItemData>();
 
-        [ProtoIgnore]
-        private Dictionary<string, ItemData> insertedInventoryItemsByGuid = new Dictionary<string, ItemData>();
-        
-        public void ItemAdded(ItemData itemData)
-        {
-            lock(insertedInventoryItemsByGuid)
-            {
-                insertedInventoryItemsByGuid[itemData.Guid] = itemData;
-            }
-        }
+        [ProtoMember(2)]
+        public List<ItemData> StorageSlotItems = new List<ItemData>();
 
-        public void ItemRemoved(string itemGuid)
+        public static InventoryData From(List<ItemData> inventoryItems, List<ItemData> storageSlotItems)
         {
-            lock (insertedInventoryItemsByGuid)
-            {
-                insertedInventoryItemsByGuid.Remove(itemGuid);
-            }
-        }
+            InventoryData inventoryData = new InventoryData();
+            inventoryData.InventoryItems = inventoryItems;
+            inventoryData.StorageSlotItems = storageSlotItems;
 
-        public List<ItemData> GetAllItemsForInitialSync()
-        {
-            lock (insertedInventoryItemsByGuid)
-            {
-                return new List<ItemData>(insertedInventoryItemsByGuid.Values);
-            }
+            return inventoryData;
         }
     }
 }

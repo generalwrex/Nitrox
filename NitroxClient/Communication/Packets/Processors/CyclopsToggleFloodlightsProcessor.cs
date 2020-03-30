@@ -1,33 +1,24 @@
 ﻿using NitroxClient.Communication.Abstract;
 using NitroxClient.Communication.Packets.Processors.Abstract;
-using NitroxClient.GameLogic.Helper;
-using NitroxClient.Unity.Helper;
-using NitroxModel.Packets;
-using UnityEngine;
+using NitroxClient.GameLogic;
+using NitroxModel_Subnautica.Packets;
 
 namespace NitroxClient.Communication.Packets.Processors
 {
     public class CyclopsToggleFloodlightsProcessor : ClientPacketProcessor<CyclopsToggleFloodLights>
     {
         private readonly IPacketSender packetSender;
+        private readonly Cyclops cyclops;
 
-        public CyclopsToggleFloodlightsProcessor(IPacketSender packetSender)
+        public CyclopsToggleFloodlightsProcessor(IPacketSender packetSender, Cyclops cyclops)
         {
             this.packetSender = packetSender;
+            this.cyclops = cyclops;
         }
 
         public override void Process(CyclopsToggleFloodLights lightingPacket)
         {
-            GameObject cyclops = GuidHelper.RequireObjectFrom(lightingPacket.Guid);
-            CyclopsLightingPanel lighting = cyclops.RequireComponentInChildren<CyclopsLightingPanel>();
-
-            if (lighting.floodlightsOn != lightingPacket.IsOn)
-            {
-                using (packetSender.Suppress<CyclopsToggleFloodLights>())
-                {
-                    lighting.ToggleFloodlights();
-                }
-            }
+            cyclops.SetFloodLighting(lightingPacket.Id, lightingPacket.IsOn);
         }
     }
 }

@@ -1,8 +1,6 @@
 ﻿using NitroxModel.DataStructures.GameLogic;
 using ProtoBufNet;
 using System.Collections.Generic;
-using NitroxModel.DataStructures.Util;
-using UnityEngine;
 
 namespace NitroxServer.GameLogic.Vehicles
 {
@@ -10,113 +8,14 @@ namespace NitroxServer.GameLogic.Vehicles
     public class VehicleData
     {
         [ProtoMember(1)]
-        public Dictionary<string, VehicleModel> SerializableVehiclesByGuid
-        {
-            get
-            {
-                lock (vehiclesByGuid)
-                {
-                    return new Dictionary<string, VehicleModel>(vehiclesByGuid);
-                }
-            }
-            set { vehiclesByGuid = value; }
-        }
-
-        [ProtoIgnore]
-        private Dictionary<string, VehicleModel> vehiclesByGuid = new Dictionary<string, VehicleModel>();
-
-
+        public List<VehicleModel> Vehicles = new List<VehicleModel>();
         
-        public void UpdateVehicle(VehicleMovementData vehicleMovement)
+        public static VehicleData From(List<VehicleModel> vehicles)
         {
-            lock(vehiclesByGuid)
-            {
-                if (vehiclesByGuid.ContainsKey(vehicleMovement.Guid))
-                {
-                    vehiclesByGuid[vehicleMovement.Guid].Position = vehicleMovement.Position;
-                    vehiclesByGuid[vehicleMovement.Guid].Rotation = vehicleMovement.Rotation;
-                }
-               
-            }
+            VehicleData vehicleData = new VehicleData();
+            vehicleData.Vehicles = vehicles;
+
+            return vehicleData;
         }
-
-        public void UpdateVehicleChildObjects(string guid, List<InteractiveChildObjectIdentifier> interactiveChildObjectIdentifier)
-        {
-            lock (vehiclesByGuid)
-            {
-                if (vehiclesByGuid.ContainsKey(guid))
-                {
-                    vehiclesByGuid[guid].InteractiveChildIdentifiers = Optional<List<InteractiveChildObjectIdentifier>>.OfNullable(interactiveChildObjectIdentifier);
-                }
-
-            }
-        }
-
-        public void UpdateVehicleName(string guid, string name)
-        {
-            lock (vehiclesByGuid)
-            {
-                if (vehiclesByGuid.ContainsKey(guid))
-                {
-                    vehiclesByGuid[guid].Name = name;
-                }
-
-            }
-        }
-
-        public void UpdateVehicleColours(int index, string guid, Vector3 hsb, Color colour)
-        {
-            lock (vehiclesByGuid)
-            {
-                if (vehiclesByGuid.ContainsKey(guid))
-                {
-                    Vector4 tmpVect = colour;
-                    vehiclesByGuid[guid].Colours[index] = tmpVect;
-                    vehiclesByGuid[guid].HSB[index] = hsb;
-                }
-            }
-        }
-
-        public void AddVehicle(VehicleModel vehicleModel)
-        {
-            lock (vehiclesByGuid)
-            {
-                vehiclesByGuid.Add(vehicleModel.Guid, vehicleModel);
-            }
-        }
-
-        public void RemoveVehicle(string guid)
-        {
-            lock (vehiclesByGuid)
-            {
-                vehiclesByGuid.Remove(guid);
-            }
-        }
-
-        public List<VehicleModel> GetVehiclesForInitialSync()
-        {
-            lock(vehiclesByGuid)
-            {
-                return new List<VehicleModel>(vehiclesByGuid.Values);
-            }
-        }
-
-        public Optional<VehicleModel> GetVehicleModel(string guid)
-        {
-            lock(vehiclesByGuid)
-            {
-                VehicleModel vehicleModel;
-
-                if(vehiclesByGuid.TryGetValue(guid, out vehicleModel))
-                {
-                    return Optional<VehicleModel>.OfNullable(vehicleModel);
-                }
-                else
-                {
-                    return Optional<VehicleModel>.Empty();
-                }
-            }
-        }
-
     }
 }

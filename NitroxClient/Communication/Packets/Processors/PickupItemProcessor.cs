@@ -1,5 +1,6 @@
 ﻿using NitroxClient.Communication.Packets.Processors.Abstract;
-using NitroxClient.GameLogic.Helper;
+using NitroxClient.GameLogic;
+using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Packets;
 using UnityEngine;
@@ -8,13 +9,20 @@ namespace NitroxClient.Communication.Packets.Processors
 {
     public class PickupItemProcessor : ClientPacketProcessor<PickupItem>
     {
+        private readonly Entities entities;
+
+        public PickupItemProcessor(Entities entities)
+        {
+            this.entities = entities;
+        }
+
         public override void Process(PickupItem pickup)
         {
-            Optional<GameObject> opGameObject = GuidHelper.GetObjectFrom(pickup.Guid);
-
-            if (opGameObject.IsPresent())
+            Optional<GameObject> opGameObject = NitroxEntity.GetObjectFrom(pickup.Id);
+            if (opGameObject.HasValue)
             {
-                UnityEngine.Object.Destroy(opGameObject.Get());
+                Object.Destroy(opGameObject.Value);
+                entities.RemoveEntity(pickup.Id);
             }
         }
     }

@@ -1,36 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
-using NitroxClient.MonoBehaviours;
-using NitroxClient.GameLogic.PlayerModelBuilder;
+using NitroxClient.GameLogic.PlayerModel;
+using NitroxClient.GameLogic.PlayerModel.Abstract;
+using NitroxClient.MonoBehaviours.DiscordRP;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Helper;
 using NitroxModel.MultiplayerSession;
 using UnityEngine;
 using Object = UnityEngine.Object;
-using NitroxClient.MonoBehaviours.DiscordRP;
 
 namespace NitroxClient.GameLogic
 {
     public class PlayerManager
     {
         private readonly ILocalNitroxPlayer localPlayer;
+        private readonly PlayerModelManager playerModelManager;
         private readonly Dictionary<ushort, RemotePlayer> playersById = new Dictionary<ushort, RemotePlayer>();
 
-        public PlayerManager(ILocalNitroxPlayer localPlayer)
+        public PlayerManager(ILocalNitroxPlayer localPlayer, PlayerModelManager playerModelManager)
         {
             this.localPlayer = localPlayer;
+            this.playerModelManager = playerModelManager;
         }
 
         public Optional<RemotePlayer> Find(ushort playerId)
         {
             RemotePlayer player;
-
-            if (playersById.TryGetValue(playerId, out player))
-            {
-                return Optional<RemotePlayer>.Of(player);
-            }
-
-            return Optional<RemotePlayer>.Empty();
+            playersById.TryGetValue(playerId, out player);
+            return Optional.OfNullable(player);
         }
 
         internal Optional<RemotePlayer> FindByName(string playerName)
@@ -39,14 +36,19 @@ namespace NitroxClient.GameLogic
             {
                 if (player.PlayerName == playerName)
                 {
-                    return Optional<RemotePlayer>.Of(player);
+                    return Optional.Of(player);
                 }
             }
 
-            return Optional<RemotePlayer>.Empty();
+            return Optional.Empty;
         }
 
-        public RemotePlayer Create(PlayerContext playerContext)
+        internal IEnumerable<RemotePlayer> GetAll()
+        {
+            return playersById.Values;
+        }
+
+        public RemotePlayer Create(PlayerContext playerContext, List<TechType> equippedTechTypes)
         {
             Validate.NotNull(playerContext);
 
@@ -56,34 +58,31 @@ namespace NitroxClient.GameLogic
             }
 
             GameObject remotePlayerBody = CloneLocalPlayerBodyPrototype();
-            RemotePlayer player = new RemotePlayer(remotePlayerBody, playerContext);
+            RemotePlayer remotePlayer = new RemotePlayer(remotePlayerBody, playerContext, equippedTechTypes, playerModelManager);
 
-            PlayerModelDirector playerModelDirector = new PlayerModelDirector(player);
-            playerModelDirector
-                .AddPing()
-                .AddDiveSuit();
+            DiscordRPController.Main.UpdatePlayerCount(GetTotalPlayerCount());
 
-            playerModelDirector.Construct();
+            playersById.Add(remotePlayer.PlayerId, remotePlayer);
 
-            playersById.Add(player.PlayerId, player);
-            DiscordController.Main.UpdateDRPDiving(GetTotalPlayerCount());
-            return player;
+            return remotePlayer;
         }
 
         public void RemovePlayer(ushort playerId)
         {
             Optional<RemotePlayer> opPlayer = Find(playerId);
-            if (opPlayer.IsPresent())
+            if (opPlayer.HasValue)
             {
-                opPlayer.Get().Destroy();
+                opPlayer.Value.Destroy();
                 playersById.Remove(playerId);
-                DiscordController.Main.UpdateDRPDiving(GetTotalPlayerCount());
+                DiscordRPController.Main.UpdatePlayerCount(GetTotalPlayerCount());
             }
         }
 
         private GameObject CloneLocalPlayerBodyPrototype()
         {
-            return Object.Instantiate(localPlayer.BodyPrototype);
+            GameObject clone = Object.Instantiate(localPlayer.BodyPrototype);
+            clone.SetActive(true);
+            return clone;
         }
 
         public int GetTotalPlayerCount()

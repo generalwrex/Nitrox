@@ -1,4 +1,5 @@
 ﻿using NitroxClient.MonoBehaviours.Gui.MainMenu;
+using NitroxModel.Logger;
 using UnityEngine;
 
 namespace NitroxClient.MonoBehaviours
@@ -12,16 +13,25 @@ namespace NitroxClient.MonoBehaviours
             gameObject.AddComponent<MainMenuMods>();
 
 #if DEBUG
-            AttachMultiplayerConsole();
+            EnableDeveloperFeatures();
+            AttachWarpToCommand();
 #endif
 
             CreateDebugger();
         }
 
-        private void AttachMultiplayerConsole()
+        private void EnableDeveloperFeatures()
+        {
+            Log.Info("Enabling developer console.");
+            DevConsole.disableConsole = false;
+            Application.runInBackground = true;
+            Log.Info($"Unity run in background set to {Application.runInBackground.ToString().ToUpperInvariant()}.");
+        }
+
+        private void AttachWarpToCommand()
         {
             GameObject consoleRoot = new GameObject();
-            consoleRoot.AddComponent<ConsoleJoinServer>();
+            consoleRoot.AddComponent<WarpToCommand>();
         }
 
         private void CreateDebugger()

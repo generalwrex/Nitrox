@@ -1,11 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-using NitroxModel.Logger;
 using ProtoBufNet;
 using ProtoBufNet.Meta;
-using NitroxModel.DataStructures.GameLogic.Buildings.Rotation;
-using NitroxModel.DataStructures.GameLogic.Buildings.Metadata;
+using NitroxModel.DataStructures.GameLogic;
 
 namespace NitroxServer.Serialization
 {
@@ -13,12 +11,17 @@ namespace NitroxServer.Serialization
     {
         private readonly RuntimeTypeModel model;
 
-        public ServerProtobufSerializer()
+        protected RuntimeTypeModel Model { get { return model; } }
+
+        public ServerProtobufSerializer(params string[] assemblies)
         {
             model = TypeModel.Create();
-            RegisterAssemblyClasses("Assembly-CSharp");
-            RegisterAssemblyClasses("Assembly-CSharp-firstpass");
-            RegisterAssemblyClasses("NitroxModel");
+
+            foreach(string assembly in assemblies)
+            {
+                RegisterAssemblyClasses(assembly);
+            }
+
             RegisterHardCodedTypes();
         }
 
@@ -45,54 +48,60 @@ namespace NitroxServer.Serialization
             model.Add(typeof(UnityEngine.BoxCollider), true);
             model.Add(typeof(UnityEngine.SphereCollider), true);
             model.Add(typeof(UnityEngine.MeshCollider), true);
-            model.Add(typeof(UnityEngine.Vector3), false).SetSurrogate(typeof(UnityStubs.Vector3));
-            model.Add(typeof(UnityEngine.Quaternion), false).SetSurrogate(typeof(UnityStubs.Quaternion));
-            model.Add(typeof(UnityEngine.Transform), false).SetSurrogate(typeof(UnityStubs.Transform));
-            model.Add(typeof(UnityEngine.GameObject), false).SetSurrogate(typeof(UnityStubs.GameObject));
-
-            MetaType metaType = model.Add(typeof(RotationMetadata), false);
-            metaType.AddSubType(50, typeof(CorridorRotationMetadata));
-            metaType.AddSubType(60, typeof(MapRoomRotationMetadata));
-
-            MetaType metadataType = model.Add(typeof(BasePieceMetadata), false);
-            metadataType.AddSubType(50, typeof(SignMetadata));
+            model.Add(typeof(UnityEngine.Vector3), false).SetSurrogate(typeof(NitroxVector3));
+            model.Add(typeof(UnityEngine.Quaternion), false).SetSurrogate(typeof(NitroxQuaternion));
+            model.Add(typeof(UnityEngine.Transform), false).SetSurrogate(typeof(NitroxTransform));
+            model.Add(typeof(UnityEngine.GameObject), false).SetSurrogate(typeof(UnityStubs.GameObject));            
         }
         
         private void RegisterAssemblyClasses(string assemblyName)
         {
             foreach (Type type in Assembly.Load(assemblyName).GetTypes())
             {
-                if (type.GetCustomAttributes(typeof(ProtoBuf.ProtoContractAttribute), true).Length > 0)
+                bool hasNitroxProtobuf = (type.GetCustomAttributes(typeof(ProtoContractAttribute), false).Length > 0);
+
+                if (hasNitroxProtobuf)
+                {
+                    // As of the latest protobuf update they will automatically register detected attributes.
+                    model.Add(type, true);
+                }
+                else if(HasUweProtoContract(type))
                 {
                     model.Add(type, true);
 
-                    RegisterMembers(type.GetFields(), type);
-                    RegisterMembers(type.GetProperties(), type);
+                    ManuallyRegisterUweProtoMembers(type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance), type);
                 }
             }
         }
 
-        private void RegisterMembers(MemberInfo[] info, Type type)
+        private bool HasUweProtoContract(Type type)
+        {
+            foreach(object o in type.GetCustomAttributes(false))
+            {
+                if (o.GetType().ToString().Contains("ProtoContractAttribute"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private void ManuallyRegisterUweProtoMembers(MemberInfo[] info, Type type)
         {
             foreach (MemberInfo property in info)
             {
-                foreach (object customAttribute in property.GetCustomAttributes(true))
+                if (!(property.DeclaringType != type))
                 {
-                    if (customAttribute is ProtoBuf.ProtoMemberAttribute)
+                    foreach (object customAttribute in property.GetCustomAttributes(false))
                     {
-                        int tag = ((ProtoBuf.ProtoMemberAttribute)customAttribute).Tag;
+                        Type attributeType = customAttribute.GetType();
 
-                        try
+                        if (attributeType.ToString().Contains("ProtoMemberAttribute"))
                         {
+                            int tag = (int)attributeType.GetProperty("Tag", BindingFlags.Public | BindingFlags.Instance).GetValue(customAttribute, new object[] { });
 
                             model[type].Add(tag, property.Name);
-                        }
-                        catch (Exception ex)
-                        {
-                            if(typeof(Peeper) != type) // srsly peeper we know you are broken...
-                            {
-                                Log.Warn("Couldn't load serializable attribute for " + type + " " + property.Name + " " + ex);
-                            }
                         }
                     }
                 }

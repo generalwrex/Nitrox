@@ -1,42 +1,65 @@
 ﻿using System.Reflection;
 using Autofac;
+using Autofac.Core;
 using NitroxClient.Communication;
 using NitroxClient.Communication.Abstract;
 using NitroxClient.Communication.MultiplayerSession;
+using NitroxClient.Communication.NetworkingLayer.LiteNetLib;
 using NitroxClient.Communication.Packets.Processors.Abstract;
 using NitroxClient.GameLogic;
+using NitroxClient.GameLogic.Bases;
 using NitroxClient.GameLogic.ChatUI;
 using NitroxClient.GameLogic.HUD;
-using NitroxClient.GameLogic.PlayerModelBuilder;
+using NitroxClient.GameLogic.InitialSync.Base;
+using NitroxClient.GameLogic.PlayerModel;
+using NitroxClient.GameLogic.PlayerModel.Abstract;
 using NitroxClient.GameLogic.PlayerPreferences;
+using NitroxClient.Helpers;
 using NitroxClient.Map;
 using NitroxModel.Core;
-using NitroxClient.GameLogic.Bases;
+using NitroxModel.DataStructures.GameLogic.Buildings.Rotation;
+using NitroxModel_Subnautica.DataStructures.GameLogic.Buildings.Rotation;
 
 namespace NitroxClient
 {
     public class ClientAutoFacRegistrar : IAutoFacRegistrar
     {
+        private readonly IModule[] modules;
+
+        public ClientAutoFacRegistrar(params IModule[] modules)
+        {
+            this.modules = modules;
+        }
+
         public void RegisterDependencies(ContainerBuilder containerBuilder)
         {
+            foreach (IModule module in modules)
+            {
+                containerBuilder.RegisterModule(module);
+            }
+
             RegisterCoreDependencies(containerBuilder);
             RegisterPacketProcessors(containerBuilder);
+            RegisterColorSwapManagers(containerBuilder);
+            RegisterInitialSyncProcessors(containerBuilder);
         }
 
         private static void RegisterCoreDependencies(ContainerBuilder containerBuilder)
         {
-			containerBuilder.RegisterType<UnityPreferenceStateStateProvider>()
+            containerBuilder.Register(c => new NitroxProtobufSerializer("NitroxModel.dll"));
+            
+            containerBuilder.RegisterType<UnityPreferenceStateProvider>()
                 .As<IPreferenceStateProvider>()
                 .SingleInstance();
 
             containerBuilder.RegisterType<PlayerPreferenceManager>().SingleInstance();
-				
+
             containerBuilder.RegisterType<MultiplayerSessionManager>()
                 .As<IMultiplayerSession>()
                 .As<IPacketSender>()
                 .InstancePerLifetimeScope();
 
-            containerBuilder.RegisterType<UdpClient>()
+            containerBuilder.RegisterType<LiteNetLibClient>()
                 .As<IClient>()
                 .InstancePerLifetimeScope();
 
@@ -44,20 +67,25 @@ namespace NitroxClient
                 .AsSelf() //Would like to deprecate this registration at some point and just work through an abstraction.
                 .As<ILocalNitroxPlayer>()
                 .InstancePerLifetimeScope();
-            
+
+            containerBuilder.RegisterType<SubnauticaRotationMetadataFactory>()
+                .As<RotationMetadataFactory>()
+                .InstancePerLifetimeScope();
+
             containerBuilder.RegisterType<PlayerManager>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<PlayerModelManager>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<PlayerVitalsManager>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<PlayerChat>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<VisibleCells>().InstancePerLifetimeScope();
-            containerBuilder.RegisterType<DeferringPacketReceiver>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<PacketReceiver>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<AI>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Building>().InstancePerLifetimeScope();
-            containerBuilder.RegisterType<Chat>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Entities>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<MedkitFabricator>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Item>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<EquipmentSlots>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<ItemContainers>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<StorageSlots>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Signs>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Power>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<PDAManagerEntry>().InstancePerLifetimeScope();
@@ -71,9 +99,11 @@ namespace NitroxClient
             containerBuilder.RegisterType<BuildThrottlingQueue>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Vehicles>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<KnownTechEntry>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<ExosuitModuleEvent>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<SeamothModulesEvent>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<EscapePodManager>().InstancePerLifetimeScope();
             containerBuilder.RegisterType<Debugger>().InstancePerLifetimeScope();
+            containerBuilder.RegisterType<Fires>().InstancePerLifetimeScope();
         }
 
         private void RegisterPacketProcessors(ContainerBuilder containerBuilder)
@@ -81,6 +111,24 @@ namespace NitroxClient
             containerBuilder
                 .RegisterAssemblyTypes(Assembly.GetAssembly(GetType()))
                 .AsClosedTypesOf(typeof(ClientPacketProcessor<>))
+                .InstancePerLifetimeScope();
+        }
+
+        private void RegisterColorSwapManagers(ContainerBuilder containerBuilder)
+        {
+            containerBuilder
+                .RegisterAssemblyTypes(Assembly.GetAssembly(GetType()))
+                .AssignableTo<IColorSwapManager>()
+                .As<IColorSwapManager>()
+                .InstancePerLifetimeScope();
+        }
+
+        private void RegisterInitialSyncProcessors(ContainerBuilder containerBuilder)
+        {
+            containerBuilder
+                .RegisterAssemblyTypes(Assembly.GetAssembly(GetType()))
+                .AssignableTo<InitialSyncProcessor>()
+                .As<InitialSyncProcessor>()
                 .InstancePerLifetimeScope();
         }
     }

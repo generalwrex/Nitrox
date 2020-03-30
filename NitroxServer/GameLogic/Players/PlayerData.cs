@@ -1,246 +1,100 @@
 ﻿using NitroxModel.DataStructures.GameLogic;
-using NitroxModel.Packets;
 using ProtoBufNet;
 using System.Collections.Generic;
 using UnityEngine;
-using NitroxModel.DataStructures.Util;
+using NitroxModel.DataStructures;
+using NitroxModel.Logger;
 
 namespace NitroxServer.GameLogic.Players
 {
     [ProtoContract]
     public class PlayerData
     {
+        public const long VERSION = 2;
+
         [ProtoMember(1)]
-        public Dictionary<string, PersistedPlayerData> SerializablePlayersByPlayerName
-        {
-            get
-            {
-                lock (playersByPlayerName)
-                {
-                    return new Dictionary<string, PersistedPlayerData>(playersByPlayerName);
-                }
-            }
-            set { playersByPlayerName = value; }
-        }
-
-        [ProtoMember(2)]
-        public Dictionary<string, EquippedItemData> SerializableModules
-        {
-            get
-            {
-                lock (ModulesItemsByGuid)
-                {
-                    return new Dictionary<string, EquippedItemData>(ModulesItemsByGuid);
-                }
-            }
-            set { ModulesItemsByGuid = value; }
-        }
-
-        [ProtoMember(3)]
-        public ushort currentPlayerId = 0;
-
-        public Dictionary<string, EquippedItemData> ModulesItemsByGuid = new Dictionary<string, EquippedItemData>();
-
-        private Dictionary<string, PersistedPlayerData> playersByPlayerName = new Dictionary<string, PersistedPlayerData>();
+        public List<PersistedPlayerData> Players = new List<PersistedPlayerData>();
         
-        public void AddEquipment(string playerName, EquippedItemData equippedItem)
+        public List<Player> GetPlayers()
         {
-            lock (playersByPlayerName)
+            List<Player> boPlayers = new List<Player>();
+
+            foreach (PersistedPlayerData playerData in Players)
             {
-                PersistedPlayerData playerData = playersByPlayerName[playerName];
-                playerData.EquippedItemsByGuid.Add(equippedItem.Guid, equippedItem);
-            }
-        }
-
-        public ushort GetPlayerId(string playerName)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-
-                return playerPersistedData.PlayerId;
-            }
-        }
-
-        public Vector3 GetPlayerSpawn(string playerName)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-
-                return playerPersistedData.PlayerSpawnData;
-            }
-        }
-
-        public bool hasSeenPlayerBefore(string playerName)
-        {
-            lock (playersByPlayerName)
-            {
-                return playersByPlayerName.ContainsKey(playerName);
-            }
-        }
-
-        public Perms GetPermissions(string playerName)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-
-                return playerPersistedData.Permissions;
-            }
-        }
-
-        public void UpdatePlayerSpawn(string playerName, Vector3 position)
-        {
-            lock (playersByPlayerName)
-            {
-                playersByPlayerName[playerName].PlayerSpawnData = position;
-            }
-        }
-
-        public bool UpdatePlayerPermissions(string playerName, Perms permissions)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData player;
-
-                if (playersByPlayerName.TryGetValue(playerName, out player)) {
-                    player.Permissions = permissions;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        
-        public void UpdatePlayerSubRootGuid(string playerName, string subroot)
-        {
-            lock (playersByPlayerName)
-            {
-                playersByPlayerName[playerName].SubRootGuid = subroot;
-            }
-        }
-
-        public void SetPlayerStats(string playerName, PlayerStats statsData)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-
-                playersByPlayerName[playerName].CurrentStats = new PlayerStatsData(statsData.Oxygen, statsData.MaxOxygen, statsData.Health, statsData.Food, statsData.Water);
-            }
-        }
-        public PlayerStatsData GetPlayerStats(string playerName)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-
-                return playersByPlayerName[playerName].CurrentStats;
-            }
-        }
+                Player player = new Player(playerData.Id,
+                                           playerData.Name,
+                                           null, //no connection/context as this player is not connected.
+                                           null, 
+                                           playerData.SpawnPosition, 
+                                           playerData.NitroxId, 
+                                           NitroxModel.DataStructures.Util.Optional.OfNullable(playerData.SubRootId), 
+                                           playerData.Permissions, 
+                                           playerData.CurrentStats,
+                                           playerData.EquippedItems, 
+                                           playerData.Modules);
                 
-        public void RemoveEquipment(string playerName, string guid)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerData = playersByPlayerName[playerName];
-                playerData.EquippedItemsByGuid.Remove(guid);
+                boPlayers.Add(player);
             }
+
+            return boPlayers;
         }
 
-        public List<EquippedItemData> GetEquippedItemsForInitialSync(string playerName)
+        public static PlayerData From(List<Player> players)
         {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-                List<EquippedItemData> ItemData = new List<EquippedItemData>(playerPersistedData.EquippedItemsByGuid.Values);
-                ItemData.AddRange((new List<EquippedItemData>(ModulesItemsByGuid.Values)));
-                return ItemData;
-            }
-        }
+            List<PersistedPlayerData> persistedPlayers = new List<PersistedPlayerData>();
 
-        public Vector3 GetPosition(string playerName)
-        {
-            lock (playersByPlayerName)
+            foreach (Player player in players)
             {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-                return playerPersistedData.PlayerSpawnData;
-            }
-        }
+                PersistedPlayerData persistedPlayer = new PersistedPlayerData();
+                persistedPlayer.Name = player.Name;
+                persistedPlayer.EquippedItems = player.getAllEquipment();
+                persistedPlayer.Modules = player.getAllModules();
+                persistedPlayer.Id = player.Id;
+                persistedPlayer.SpawnPosition = player.Position;
+                persistedPlayer.CurrentStats = player.Stats;
+                persistedPlayer.SubRootId = player.SubRootId.OrElse(null);
+                persistedPlayer.Permissions = player.Permissions;
+                persistedPlayer.NitroxId = player.GameObjectId;
 
-        public Optional<string> GetSubRootGuid(string playerName)
-        {
-            lock (playersByPlayerName)
-            {
-                PersistedPlayerData playerPersistedData = GetOrCreatePersistedPlayerData(playerName);
-                return Optional<string>.OfNullable(playerPersistedData.SubRootGuid);
-            }
-        }
-
-        // Must be called when playersByPlayerName is locked.
-        private PersistedPlayerData GetOrCreatePersistedPlayerData(string playerName)
-        {
-            PersistedPlayerData playerPersistedData = null;
-
-            if (!playersByPlayerName.TryGetValue(playerName, out playerPersistedData))
-            {
-                playerPersistedData = playersByPlayerName[playerName] = new PersistedPlayerData(playerName, ++currentPlayerId);
+                persistedPlayers.Add(persistedPlayer);
             }
 
-            return playerPersistedData;
-        }
+            PlayerData playerData = new PlayerData();
+            playerData.Players = persistedPlayers;
 
-        public void AddModule(EquippedItemData equippedmodule)
-        {
-            lock (ModulesItemsByGuid)
-            {
-                ModulesItemsByGuid.Add(equippedmodule.Guid, equippedmodule);
-            }
-        }
-        public void RemoveModule(string guid)
-        {
-            lock (ModulesItemsByGuid)
-            {
-                ModulesItemsByGuid.Remove(guid);
-            }
+            return playerData;
         }
 
         [ProtoContract]
         public class PersistedPlayerData
         {
             [ProtoMember(1)]
-            public string PlayerName { get; set; }
+            public string Name { get; set; }
 
             [ProtoMember(2)]
-            public Dictionary<string, EquippedItemData> EquippedItemsByGuid { get; set; } = new Dictionary<string, EquippedItemData>();
+            public List<EquippedItemData> EquippedItems { get; set; } = new List<EquippedItemData>();
 
             [ProtoMember(3)]
-            public ushort PlayerId { get; set; }
+            public List<EquippedItemData> Modules { get; set; } = new List<EquippedItemData>();
 
             [ProtoMember(4)]
-            public Vector3 PlayerSpawnData { get; set; }
+            public ushort Id { get; set; }
 
             [ProtoMember(5)]
-            public PlayerStatsData CurrentStats { get; set; }
+            public Vector3 SpawnPosition { get; set; }
 
             [ProtoMember(6)]
-            public string SubRootGuid { get; set; }
+            public PlayerStatsData CurrentStats { get; set; }
 
             [ProtoMember(7)]
+            public NitroxId SubRootId { get; set; }
+
+            [ProtoMember(8)]
             public Perms Permissions { get; set; } = Perms.PLAYER;
 
-            public PersistedPlayerData()
-            {
-                // Constructor for serialization purposes
-            }
-
-            public PersistedPlayerData(string playerName, ushort playerId)
-            {
-                PlayerName = playerName;
-                PlayerId = playerId;
-            }
+            [ProtoMember(9)]
+            public NitroxId NitroxId { get; set; }
+            
         }
-
     }
 }

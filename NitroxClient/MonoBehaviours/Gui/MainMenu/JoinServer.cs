@@ -3,7 +3,9 @@ using System.Collections;
 using NitroxClient.Communication.Abstract;
 using NitroxClient.Communication.Exceptions;
 using NitroxClient.Communication.MultiplayerSession;
-using NitroxClient.GameLogic.PlayerModelBuilder;
+using NitroxClient.GameLogic.PlayerModel.Abstract;
+using NitroxClient.GameLogic.PlayerModel.ColorSwap;
+using NitroxClient.GameLogic.PlayerModel.ColorSwap.Strategy;
 using NitroxClient.GameLogic.PlayerPreferences;
 using NitroxClient.Unity.Helper;
 using NitroxModel.Core;
@@ -28,7 +30,7 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
         private GameObject playerSettingsPanel;
         private PlayerPreferenceManager preferencesManager;
         public string ServerIp = "";
-        public int serverPort;
+        public int ServerPort;
         public static GameObject SaveGameMenuPrototype { get; set; }
 
         private static MainMenuRightSide RightSideMainMenu => MainMenuRightSide.main;
@@ -55,13 +57,13 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
 
             float hue;
             float saturation;
-            float vibrance;
+            float vibrancy;
 
             Color playerColor = new Color(activePlayerPreference.RedAdditive, activePlayerPreference.GreenAdditive, activePlayerPreference.BlueAdditive);
 
-            Color.RGBToHSV(playerColor, out hue, out saturation, out vibrance);
+            Color.RGBToHSV(playerColor, out hue, out saturation, out vibrancy);
             uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
-            colorPicker.SetHSB(new Vector3(hue, 1f, vibrance));
+            colorPicker.SetHSB(new Vector3(hue, 1f, vibrancy));
 
             GameObject playerNameInputFieldGameObject = playerSettingsPanel.RequireGameObject("InputField");
 
@@ -73,13 +75,12 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
 
         public void Update()
         {
-            if (multiplayerSession.CurrentState.CurrentStage != MultiplayerSessionConnectionStage.AwaitingReservationCredentials ||
+            if (multiplayerSession.CurrentState.CurrentStage != MultiplayerSessionConnectionStage.AWAITING_RESERVATION_CREDENTIALS ||
                 gameObject.GetComponent<MainMenuNotification>() != null)
             {
                 return;
             }
 
-            //Name collision?
             if (UnityEngine.Input.GetKeyDown(KeyCode.Return))
             {
                 OnJoinClick();
@@ -93,220 +94,22 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
         public void OnDestroy()
         {
             UnsubscribeColorChanged();
-            RightSideMainMenu.groups.Remove(joinServerMenu);
+            if (joinServerMenu != null)
+            {
+                MainMenuGroup group = joinServerMenu.GetComponent<MainMenuGroup>();
+                if (group)
+                {
+                    RightSideMainMenu.groups.Remove(group);
+                }
+            }
             Destroy(joinServerMenu);
-        }
-
-        private void SubscribeColorChanged()
-        {
-            if (isSubscribed)
-            {
-                return;
-            }
-
-            uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
-            colorPicker.onColorChange.AddListener(OnColorChange);
-
-            isSubscribed = true;
-        }
-
-        private void UnsubscribeColorChanged()
-        {
-            if (playerSettingsPanel == null || !isSubscribed)
-            {
-                return;
-            }
-
-            uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
-            colorPicker.onColorChange.RemoveListener(OnColorChange);
-
-            isSubscribed = false;
-        }
-
-        private void OnColorChange(ColorChangeEventData eventData)
-        {
-            Color selectedColor = eventData.color;
-
-            GameObject selectedColorGameObject = playerSettingsPanel.RequireGameObject("BaseTab/SelectedColor")
-                ;
-
-            Image baseTabSelectedColorImage = selectedColorGameObject.GetComponent<Image>();
-            baseTabSelectedColorImage.color = selectedColor;
-        }
-
-        private void FocusPlayerNameTextbox()
-        {
-            GameObject playerNameInputFieldGameObject = playerSettingsPanel.RequireGameObject("InputField");
-            uGUI_InputField playerNameInputField = playerNameInputFieldGameObject.GetComponent<uGUI_InputField>();
-
-            playerNameInputField.ActivateInputField();
-        }
-
-        private void StartMultiplayerClient()
-        {
-            if (multiplayerClient == null)
-            {
-                multiplayerClient = new GameObject();
-                multiplayerClient.name = "Multiplayer Client";
-                multiplayerClient.AddComponent<Multiplayer>();
-                multiplayerSession.ConnectionStateChanged += SessionConnectionStateChangedHandler;
-            }
-
-            try
-            {
-                multiplayerSession.Connect(ServerIp, serverPort);
-            }
-            catch (ClientConnectionFailedException)
-            {
-                Log.InGame($"Unable to contact the remote server at: {ServerIp}:{serverPort}");
-                OnCancelClick();
-            }
-        }
-
-        private void OnCancelClick()
-        {
-            StopMultiplayerClient();
-            RightSideMainMenu.OpenGroup("Multiplayer");
-            Destroy(gameObject);
-        }
-
-        private void OnJoinClick()
-        {
-            Text playerNameText = playerSettingsPanel.RequireTransform("InputField/Text").GetComponent<Text>();
-
-            string playerName = playerNameText.text;
-
-            if (string.IsNullOrEmpty(playerName))
-            {
-                NotifyUser("Survival is a systemic initiative, but even the lowliest of cogs needs a designation in order to effectively coordinate the collective effort towards a - desireable, outcome.\n\n" +
-                           "Please identify yourself so that your presence may be indexed with local Survivor PDA telemetry instruments...");
-                return;
-            }
-
-            uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
-            Color playerColor = colorPicker.currentColor;
-
-            SetCurrentPreference(playerName, playerColor);
-
-            PlayerSettings playerSettings = new PlayerSettings(playerColor);
-            AuthenticationContext authenticationContext = new AuthenticationContext(playerName);
-
-            multiplayerSession.RequestSessionReservation(playerSettings, authenticationContext);
-        }
-
-        private void SetCurrentPreference(string playerName, Color playerColor)
-        {
-            PlayerPreference newPreference = new PlayerPreference(playerName, playerColor);
-
-            if (activePlayerPreference.Equals(newPreference))
-            {
-                return;
-            }
-
-            preferencesManager.SetPreference(ServerIp, newPreference);
-        }
-
-        private void SessionConnectionStateChangedHandler(IMultiplayerSessionConnectionState state)
-        {
-            switch (state.CurrentStage)
-            {
-                case MultiplayerSessionConnectionStage.EstablishingServerPolicy:
-                    Log.InGame("Requesting session policy information...");
-                    break;
-                case MultiplayerSessionConnectionStage.AwaitingReservationCredentials:
-                    Log.InGame("Waiting for User Input...");
-
-                    RightSideMainMenu.OpenGroup("Join Server");
-                    FocusPlayerNameTextbox();
-
-                    break;
-                case MultiplayerSessionConnectionStage.SessionReserved:
-                    Log.InGame("Launching game...");
-
-                    multiplayerSession.ConnectionStateChanged -= SessionConnectionStateChangedHandler;
-                    preferencesManager.Save();
-
-                    IEnumerator startNewGame = (IEnumerator)uGUI_MainMenu.main.ReflectionCall("StartNewGame", false, false, GameMode.Survival);
-                    StartCoroutine(startNewGame);
-
-                    break;
-                case MultiplayerSessionConnectionStage.SessionReservationRejected:
-                    Log.InGame("Reservation rejected...");
-
-                    MultiplayerSessionReservationState reservationState = multiplayerSession.Reservation.ReservationState;
-
-                    string reservationRejectionNotification = reservationState.Describe();
-
-                    NotifyUser(
-                        reservationRejectionNotification,
-                        () =>
-                        {
-                            multiplayerSession.Disconnect();
-                            multiplayerSession.Connect(ServerIp, serverPort);
-                        });
-
-                    break;
-                case MultiplayerSessionConnectionStage.Disconnected:
-                    Log.Info("Disconnected from server");
-                    break;
-            }
-        }
-
-        private void NotifyUser(string notificationMessage, Action continuationAction = null)
-        {
-            if (gameObject.GetComponent<MainMenuNotification>() != null)
-            {
-                return;
-            }
-
-            Action wrappedAction = () =>
-            {
-                continuationAction?.Invoke();
-                Destroy(gameObject.GetComponent<MainMenuNotification>(), 0.0001f);
-            };
-
-            MainMenuNotification notificationDialog = gameObject.AddComponent<MainMenuNotification>();
-            notificationDialog.ShowNotification(notificationMessage, wrappedAction);
-        }
-
-        private void StopMultiplayerClient()
-        {
-            if (multiplayerClient != null)
-            {
-                Multiplayer.Main.StopCurrentSession();
-                Destroy(multiplayerClient);
-                multiplayerClient = null;
-                multiplayerSession.ConnectionStateChanged -= SessionConnectionStateChangedHandler;
-            }
-        }
-
-        //This method merges the cloned color picker element with the existing template for menus that appear in the "right side" region of Subnautica's main menu.
-        private void InitializeJoinMenu()
-        {
-            GameObject joinServerMenu = CloneSaveGameMenuPrototype();
-            joinServerMenu.name = "Join Server";
-
-            joinServerMenu.transform.SetParent(RightSideMainMenu.transform, false);
-            RightSideMainMenu.groups.Add(joinServerMenu);
-
-            //Not sure what is up with this menu, but we have to use the RectTransform of the Image component as the parent for our color picker panel.
-            //Most of the UI elements seem to vanish behind this Image otherwise. 
-            RectTransform joinServerBackground = joinServerMenu.GetComponent<Image>().rectTransform;
-            joinServerBackground.anchorMin = new Vector2(0.5f, 0.5f);
-            joinServerBackground.anchorMax = new Vector2(0.5f, 0.5f);
-            joinServerBackground.pivot = new Vector2(0.5f, 0.5f);
-            joinServerBackground.anchoredPosition = new Vector2(joinServerBackground.anchoredPosition.x, 5f);
-
-            InitializePlayerSettingsPanel(joinServerBackground);
-
-            this.joinServerMenu = joinServerMenu;
         }
 
         private static GameObject CloneSaveGameMenuPrototype()
         {
             GameObject joinServerMenu = Instantiate(SaveGameMenuPrototype);
-            DestroyObject(joinServerMenu.RequireGameObject("Header"));
-            DestroyObject(joinServerMenu.RequireGameObject("Scroll View"));
+            Destroy(joinServerMenu.RequireGameObject("Header"));
+            Destroy(joinServerMenu.RequireGameObject("Scroll View"));
             Destroy(joinServerMenu.GetComponent<LayoutGroup>());
             Destroy(joinServerMenu.GetComponent<MainMenuLoadPanel>());
             joinServerMenu.GetAllComponentsInChildren<LayoutGroup>().ForEach(Destroy);
@@ -315,22 +118,6 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
             joinServerMenu.GetComponent<CanvasGroup>().blocksRaycasts = false;
 
             return joinServerMenu;
-        }
-
-        //This configures and re-positions the elements on the default "ColorGrayscale" menu to suite our purposes now. 
-        private void InitializePlayerSettingsPanel(RectTransform joinServerBackground)
-        {
-            GameObject playerSettingsPanel = CloneColorPickerPanelPrototype();
-
-            InitializePlayerSettingsPanelElement(joinServerBackground, playerSettingsPanel);
-            InitializeBaseTabElement(joinServerBackground, playerSettingsPanel);
-            InitializeLowerDetailElement(playerSettingsPanel);
-            InitializePlayerNameInputElement(playerSettingsPanel);
-            InitializeColorPickerComponent(playerSettingsPanel);
-            InitializeColorPickerElement(playerSettingsPanel);
-            InitializeButtonElements(joinServerBackground, playerSettingsPanel);
-
-            this.playerSettingsPanel = playerSettingsPanel;
         }
 
         private static GameObject CloneColorPickerPanelPrototype()
@@ -351,7 +138,7 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
             colorPickerCanvasGroup.ignoreParentGroups = true;
             colorPickerCanvasGroup.interactable = true;
 
-            //Destroy everything that we know we will not be using. 
+            //Destroy everything that we know we will not be using.
             Destroy(playerSettingsPanel.transform.parent);
             Destroy(playerSettingsPanel.GetComponent<uGUI_NavigableControlGrid>());
             Destroy(playerSettingsPanel.GetComponent<Image>());
@@ -428,10 +215,12 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
 
             //This removes the extra "tabs" from the base texture.
             Texture2D newBaseTabTexture = baseTabBackgroundImage.sprite.texture.Clone();
-            HsvColorFilter baseTabBackgroundColorFilter = new HsvColorFilter(-1f, -1f, -1f, 0f);
-            baseTabBackgroundColorFilter.AddHueRange(185f, 215f);
-            baseTabBackgroundColorFilter.AddAlphaRange(0f, 175f);
-            newBaseTabTexture.ApplyFiltersToBlock(3, 3, 160, (int)(baseTabBackgroundImage.sprite.textureRect.height - 71f), baseTabBackgroundColorFilter);
+            TextureBlock textureBlock = new TextureBlock(3, 3, 160, (int)(baseTabBackgroundImage.sprite.textureRect.height - 71f));
+            IColorSwapStrategy alphaChannelSwapper = new AlphaChannelSwapper(0f);
+            HsvSwapper baseTabBackgroundSwapper = new HsvSwapper(alphaChannelSwapper);
+            baseTabBackgroundSwapper.SetHueRange(185f, 215f);
+            baseTabBackgroundSwapper.SetAlphaRange(0f, 175f);
+            newBaseTabTexture.SwapTextureColors(baseTabBackgroundSwapper, textureBlock);
             baseTabBackgroundImage.sprite = Sprite.Create(newBaseTabTexture, new Rect(baseTabBackgroundImage.sprite.textureRect), new Vector2(0f, 0f));
         }
 
@@ -497,6 +286,229 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
             colorPickerGameObjectTransform.anchorMax = new Vector2(1f, 1f);
             colorPickerGameObjectTransform.pivot = new Vector2(0.5f, 0.5f);
             colorPickerGameObjectTransform.anchoredPosition = new Vector2(40f, 0f);
+        }
+
+        private void SubscribeColorChanged()
+        {
+            if (isSubscribed)
+            {
+                return;
+            }
+
+            uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
+            colorPicker.onColorChange.AddListener(OnColorChange);
+
+            isSubscribed = true;
+        }
+
+        private void UnsubscribeColorChanged()
+        {
+            if (playerSettingsPanel == null || !isSubscribed)
+            {
+                return;
+            }
+
+            uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
+            colorPicker.onColorChange.RemoveListener(OnColorChange);
+
+            isSubscribed = false;
+        }
+
+        private void OnColorChange(ColorChangeEventData eventData)
+        {
+            Color selectedColor = eventData.color;
+
+            GameObject selectedColorGameObject = playerSettingsPanel.RequireGameObject("BaseTab/SelectedColor");
+
+            Image baseTabSelectedColorImage = selectedColorGameObject.GetComponent<Image>();
+            baseTabSelectedColorImage.color = selectedColor;
+        }
+
+        private void FocusPlayerNameTextbox()
+        {
+            GameObject playerNameInputFieldGameObject = playerSettingsPanel.RequireGameObject("InputField");
+            uGUI_InputField playerNameInputField = playerNameInputFieldGameObject.GetComponent<uGUI_InputField>();
+
+            playerNameInputField.ActivateInputField();
+        }
+
+        private void StartMultiplayerClient()
+        {
+            if (multiplayerClient == null)
+            {
+                multiplayerClient = new GameObject();
+                multiplayerClient.name = "Multiplayer Client";
+                multiplayerClient.AddComponent<Multiplayer>();
+                multiplayerSession.ConnectionStateChanged += SessionConnectionStateChangedHandler;
+            }
+
+            try
+            {
+                multiplayerSession.Connect(ServerIp, ServerPort);
+            }
+            catch (ClientConnectionFailedException)
+            {
+                Log.InGame($"Unable to contact the remote server at: {ServerIp}:{ServerPort}");
+                OnCancelClick();
+            }
+        }
+
+        private void OnCancelClick()
+        {
+            StopMultiplayerClient();
+            RightSideMainMenu.OpenGroup("Multiplayer");
+            gameObject.SetActive(false);
+        }
+
+        private void OnJoinClick()
+        {
+            Text playerNameText = playerSettingsPanel.RequireTransform("InputField/Text").GetComponent<Text>();
+
+            string playerName = playerNameText.text;
+
+            if (string.IsNullOrEmpty(playerName))
+            {
+                NotifyUser("Survival is a systemic initiative, but even the lowliest of cogs needs a designation in order to effectively coordinate the collective effort towards a - desireable, outcome.\n\n" +
+                           "Please identify yourself so that your presence may be indexed with local Survivor PDA telemetry instruments...");
+                return;
+            }
+
+            uGUI_ColorPicker colorPicker = playerSettingsPanel.GetComponentInChildren<uGUI_ColorPicker>();
+            Color playerColor = colorPicker.currentColor;
+
+            SetCurrentPreference(playerName, playerColor);
+
+            PlayerSettings playerSettings = new PlayerSettings(playerColor);
+            AuthenticationContext authenticationContext = new AuthenticationContext(playerName);
+
+            multiplayerSession.RequestSessionReservation(playerSettings, authenticationContext);
+        }
+
+        private void SetCurrentPreference(string playerName, Color playerColor)
+        {
+            PlayerPreference newPreference = new PlayerPreference(playerName, playerColor);
+
+            if (activePlayerPreference.Equals(newPreference))
+            {
+                return;
+            }
+
+            preferencesManager.SetPreference(ServerIp, newPreference);
+        }
+
+        private void SessionConnectionStateChangedHandler(IMultiplayerSessionConnectionState state)
+        {
+            switch (state.CurrentStage)
+            {
+                case MultiplayerSessionConnectionStage.ESTABLISHING_SERVER_POLICY:
+                    Log.InGame("Requesting session policy information...");
+                    break;
+                case MultiplayerSessionConnectionStage.AWAITING_RESERVATION_CREDENTIALS:
+                    Log.InGame("Waiting for User Input...");
+
+                    RightSideMainMenu.OpenGroup("Join Server");
+                    FocusPlayerNameTextbox();
+
+                    break;
+                case MultiplayerSessionConnectionStage.SESSION_RESERVED:
+                    Log.InGame("Launching game...");
+
+                    multiplayerSession.ConnectionStateChanged -= SessionConnectionStateChangedHandler;
+                    preferencesManager.Save();
+
+#pragma warning disable CS0618 // God Damn it UWE...
+                    IEnumerator startNewGame = (IEnumerator)uGUI_MainMenu.main.ReflectionCall("StartNewGame", false, false, GameMode.Survival);
+#pragma warning restore CS0618 // God damn it UWE...
+                    StartCoroutine(startNewGame);
+                    LoadingScreenVersionText.Initialize();
+
+                    break;
+                case MultiplayerSessionConnectionStage.SESSION_RESERVATION_REJECTED:
+                    Log.InGame("Reservation rejected...");
+
+                    MultiplayerSessionReservationState reservationState = multiplayerSession.Reservation.ReservationState;
+
+                    string reservationRejectionNotification = reservationState.Describe();
+
+                    NotifyUser(
+                        reservationRejectionNotification,
+                        () =>
+                        {
+                            multiplayerSession.Disconnect();
+                            multiplayerSession.Connect(ServerIp, ServerPort);
+                        });
+
+                    break;
+                case MultiplayerSessionConnectionStage.DISCONNECTED:
+                    Log.Info("Disconnected from server");
+                    break;
+            }
+        }
+
+        private void NotifyUser(string notificationMessage, Action continuationAction = null)
+        {
+            if (gameObject.GetComponent<MainMenuNotification>() != null)
+            {
+                return;
+            }
+
+            Action wrappedAction = () =>
+            {
+                continuationAction?.Invoke();
+                Destroy(gameObject.GetComponent<MainMenuNotification>(), 0.0001f);
+            };
+
+            MainMenuNotification notificationDialog = gameObject.AddComponent<MainMenuNotification>();
+            notificationDialog.ShowNotification(notificationMessage, wrappedAction);
+        }
+
+        private void StopMultiplayerClient()
+        {
+            if (multiplayerClient != null)
+            {
+                Multiplayer.Main.StopCurrentSession();
+                Destroy(multiplayerClient);
+                multiplayerClient = null;
+                multiplayerSession.ConnectionStateChanged -= SessionConnectionStateChangedHandler;
+            }
+        }
+
+        //This method merges the cloned color picker element with the existing template for menus that appear in the "right side" region of Subnautica's main menu.
+        private void InitializeJoinMenu()
+        {
+            GameObject joinServerMenu = CloneSaveGameMenuPrototype();
+            joinServerMenu.name = "Join Server";
+
+            joinServerMenu.transform.SetParent(RightSideMainMenu.transform, false);
+            RightSideMainMenu.groups.Add(joinServerMenu.GetComponent<MainMenuGroup>());
+
+            //Not sure what is up with this menu, but we have to use the RectTransform of the Image component as the parent for our color picker panel.
+            //Most of the UI elements seem to vanish behind this Image otherwise.
+            RectTransform joinServerBackground = joinServerMenu.GetComponent<Image>().rectTransform;
+            joinServerBackground.anchorMin = new Vector2(0.5f, 0.5f);
+            joinServerBackground.anchorMax = new Vector2(0.5f, 0.5f);
+            joinServerBackground.pivot = new Vector2(0.5f, 0.5f);
+            joinServerBackground.anchoredPosition = new Vector2(joinServerBackground.anchoredPosition.x, 5f);
+
+            InitializePlayerSettingsPanel(joinServerBackground);
+
+            this.joinServerMenu = joinServerMenu;
+        }
+
+        //This configures and re-positions the elements on the default "ColorGrayscale" menu to suite our purposes now.
+        private void InitializePlayerSettingsPanel(RectTransform joinServerBackground)
+        {
+            GameObject playerSettingsPanel = CloneColorPickerPanelPrototype();
+
+            InitializePlayerSettingsPanelElement(joinServerBackground, playerSettingsPanel);
+            InitializeBaseTabElement(joinServerBackground, playerSettingsPanel);
+            InitializeLowerDetailElement(playerSettingsPanel);
+            InitializePlayerNameInputElement(playerSettingsPanel);
+            InitializeColorPickerComponent(playerSettingsPanel);
+            InitializeColorPickerElement(playerSettingsPanel);
+            InitializeButtonElements(joinServerBackground, playerSettingsPanel);
+
+            this.playerSettingsPanel = playerSettingsPanel;
         }
 
         //Join and Cancel buttons

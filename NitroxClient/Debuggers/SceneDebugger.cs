@@ -9,11 +9,13 @@ using NitroxClient.GameLogic;
 using NitroxClient.MonoBehaviours;
 using NitroxClient.Unity.Helper;
 using NitroxModel.Core;
+using NitroxModel.DataStructures;
 using NitroxModel.Helper;
 using NitroxModel.Logger;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Mathf = UnityEngine.Mathf;
 
 namespace NitroxClient.Debuggers
 {
@@ -23,6 +25,9 @@ namespace NitroxClient.Debuggers
         private readonly BindingFlags flags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic;
         public readonly KeyCode RayCastKey = KeyCode.F9;
         private bool editMode;
+        private bool sendToServer;
+        private bool showUnityMethods;
+        private bool showSystemMethods;
         private bool hitMode = false;
         private Vector2 gameObjectScrollPos;
 
@@ -38,15 +43,19 @@ namespace NitroxClient.Debuggers
 
         private Vector2 hierarchyScrollPos;
         private Vector2 monoBehaviourScrollPos;
-        private MonoBehaviour selectedMonoBehaviour;
-        private GameObject selectedObject;
 
+        private Scene selectedScene;
+        private GameObject selectedObject;
         private bool selectedObjectActiveSelf;
         private Vector3 selectedObjectPos;
+        private Vector3 selectedObjectLocPos;
         private Quaternion selectedObjectRot;
+        private Quaternion selectedObjectLocRot;
         private Vector3 selectedObjectScale;
-        private Scene selectedScene;
-        private bool sendToServer;
+        private MonoBehaviour selectedMonoBehaviour;
+
+        private Texture arrowTexture;
+        private Texture circleTexture;
 
         public SceneDebugger() : base(500, null, KeyCode.S, true, false, false, GUISkinCreationOptions.DERIVEDCOPY)
         {
@@ -54,6 +63,89 @@ namespace NitroxClient.Debuggers
             AddTab("Hierarchy", RenderTabHierarchy);
             AddTab("GameObject", RenderTabGameObject);
             AddTab("MonoBehaviour", RenderTabMonoBehaviour);
+
+            arrowTexture = Resources.Load<Texture2D>("Sprites/Arrow");
+            circleTexture = Resources.Load<Material>("Materials/WorldCursor").GetTexture("_MainTex");
+        }
+
+        public override void OnGUI()
+        {
+            base.OnGUI();
+            if (selectedObject == null)
+            {
+                return;
+            }
+
+            Texture currentTexture;
+            float markerX, markerY, markerRot;
+
+            Vector3 screenPos = Player.main.viewModelCamera.WorldToScreenPoint(selectedObject.transform.position);
+            //if object is on screen
+            if (screenPos.z > 0 &&
+                screenPos.x >= 0 && screenPos.x < Screen.width &&
+                screenPos.y >= 0 && screenPos.y < Screen.height)
+            {
+                currentTexture = circleTexture;
+                markerX = screenPos.x;
+                //subtract from height to go from bottom up to top down
+                markerY = Screen.height - screenPos.y;
+                markerRot = 0;
+            }
+            //if object is not on screen
+            else
+            {
+                currentTexture = arrowTexture;
+                //if the object is behind us, flip across the center
+                if (screenPos.z < 0)
+                {
+                    screenPos.x = Screen.width - screenPos.x;
+                    screenPos.y = Screen.height - screenPos.y;
+                }
+
+                //calculate new position of arrow (somewhere on the edge)
+                Vector3 screenCenter = new Vector3(Screen.width, Screen.height, 0) / 2f;
+                Vector3 originPos = screenPos - screenCenter;
+
+                float angle = Mathf.Atan2(originPos.y, originPos.x) - (90 * Mathf.Deg2Rad);
+                float cos = Mathf.Cos(angle);
+                float sin = Mathf.Sin(angle);
+                float m = cos / -sin;
+
+                Vector3 screenBounds = screenCenter * 0.9f;
+
+                if (cos > 0)
+                {
+                    screenPos = new Vector3(screenBounds.y / m, screenBounds.y, 0);
+                }
+                else
+                {
+                    screenPos = new Vector3(-screenBounds.y / m, -screenBounds.y, 0);
+                }
+                if (screenPos.x > screenBounds.x)
+                {
+                    screenPos = new Vector3(screenBounds.x, screenBounds.x * m, 0);
+                }
+                else if (screenPos.x < -screenBounds.x)
+                {
+                    screenPos = new Vector3(-screenBounds.x, -screenBounds.x * m, 0);
+                }
+
+                screenPos += screenCenter;
+
+                markerX = screenPos.x;
+                markerY = Screen.height - screenPos.y;
+                markerRot = -angle * Mathf.Rad2Deg;
+            }
+
+            float markerSizeX = currentTexture.width;
+            float markerSizeY = currentTexture.height;
+            GUI.matrix = Matrix4x4.Translate(new Vector3(markerX, markerY, 0)) *
+                         Matrix4x4.Rotate(Quaternion.Euler(0, 0, markerRot)) *
+                         Matrix4x4.Scale(new Vector3(0.5f, 0.5f, 0.5f)) *
+                         Matrix4x4.Translate(new Vector3(-markerSizeX / 2, -markerSizeY / 2, 0));
+
+            GUI.DrawTexture(new Rect(0, 0, markerSizeX, markerSizeY), currentTexture);
+            GUI.matrix = Matrix4x4.identity;
         }
 
         public override void Update()
@@ -77,7 +169,7 @@ namespace NitroxClient.Debuggers
                     {
                         gameObjectSearchResult.Add(hit.transform.gameObject);
                     }
-                    ActiveTab = GetTab("Hierarchy").Get();
+                    ActiveTab = GetTab("Hierarchy").Value;
                 }
             }
         }
@@ -157,7 +249,7 @@ namespace NitroxClient.Debuggers
                         if (GUILayout.Button($"{(isSelected ? ">> " : "")}{i}: {path.TruncateLeft(35)}", isLoaded ? "sceneLoaded" : "label"))
                         {
                             selectedScene = currentScene;
-                            ActiveTab = GetTab("Hierarchy").Get();
+                            ActiveTab = GetTab("Hierarchy").Value;
                         }
 
                         if (isLoaded)
@@ -207,11 +299,7 @@ namespace NitroxClient.Debuggers
 
                     if (GUILayout.Button("<"))
                     {
-                        selectedObject = selectedObject?.transform.parent?.gameObject;
-                        selectedObjectActiveSelf = selectedObject.activeSelf;
-                        selectedObjectPos = selectedObject.transform.position;
-                        selectedObjectRot = selectedObject.transform.rotation;
-                        selectedObjectScale = selectedObject.transform.localScale;
+                        UpdateSelectedObject(selectedObject?.transform.parent?.gameObject);
                     }
                 }
             }
@@ -240,7 +328,7 @@ namespace NitroxClient.Debuggers
                 }
             }
 
-            if(hitMode)
+            if (hitMode)
             {
                 using (new GUILayout.VerticalScope("Box"))
                 {
@@ -248,24 +336,20 @@ namespace NitroxClient.Debuggers
                     {
                         using (GUILayout.ScrollViewScope scroll = new GUILayout.ScrollViewScope(hierarchyScrollPos))
                         {
-                            hierarchyScrollPos = scroll.scrollPosition;                            
+                            hierarchyScrollPos = scroll.scrollPosition;
                             foreach (GameObject child in gameObjectSearchResult)
                             {
                                 string guiStyle = child.transform.childCount > 0 ? "bold" : "label";
                                 if (GUILayout.Button($"{child.name}", guiStyle))
                                 {
-                                    selectedObject = child.gameObject;
-                                    selectedObjectActiveSelf = selectedObject.activeSelf;
-                                    selectedObjectPos = selectedObject.transform.position;
-                                    selectedObjectRot = selectedObject.transform.rotation;
-                                    selectedObjectScale = selectedObject.transform.localScale;
+                                    UpdateSelectedObject(child);
                                 }
                             }
                         }
                     }
                     else
                     {
-                        GUILayout.Label($"No selected scene\nClick on a Scene in '{GetTab("Hierarchy").Get().Name}'", "fillMessage");
+                        GUILayout.Label($"No selected scene\nClick on a Scene in '{GetTab("Hierarchy").Value.Name}'", "fillMessage");
                     }
                 }
             }
@@ -297,18 +381,14 @@ namespace NitroxClient.Debuggers
                                 string guiStyle = child.transform.childCount > 0 ? "bold" : "label";
                                 if (GUILayout.Button($"{child.name}", guiStyle))
                                 {
-                                    selectedObject = child.gameObject;
-                                    selectedObjectActiveSelf = selectedObject.activeSelf;
-                                    selectedObjectPos = selectedObject.transform.position;
-                                    selectedObjectRot = selectedObject.transform.rotation;
-                                    selectedObjectScale = selectedObject.transform.localScale;
+                                    UpdateSelectedObject(child);
                                 }
                             }
                         }
                     }
                     else
                     {
-                        GUILayout.Label($"No selected scene\nClick on a Scene in '{GetTab("Hierarchy").Get().Name}'", "fillMessage");
+                        GUILayout.Label($"No selected scene\nClick on a Scene in '{GetTab("Hierarchy").Value.Name}'", "fillMessage");
                     }
                 }
             }
@@ -359,11 +439,7 @@ namespace NitroxClient.Debuggers
                             string guiStyle = item.transform.childCount > 0 ? "bold" : "label";
                             if (GUILayout.Button($"{item.name}", guiStyle))
                             {
-                                selectedObject = item.gameObject;
-                                selectedObjectActiveSelf = selectedObject.activeSelf;
-                                selectedObjectPos = selectedObject.transform.position;
-                                selectedObjectRot = selectedObject.transform.rotation;
-                                selectedObjectScale = selectedObject.transform.localScale;
+                                UpdateSelectedObject(item);
                             }
                         }
                     }
@@ -389,29 +465,46 @@ namespace NitroxClient.Debuggers
                                 selectedObjectActiveSelf = GUILayout.Toggle(selectedObjectActiveSelf, "Active");
                             }
 
-                            GUILayout.Label("Position");
                             using (new GUILayout.HorizontalScope())
                             {
-                                float.TryParse(GUILayout.TextField(selectedObjectPos.x.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectPos.x);
-                                float.TryParse(GUILayout.TextField(selectedObjectPos.y.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectPos.y);
-                                float.TryParse(GUILayout.TextField(selectedObjectPos.z.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectPos.z);
+                                GUILayout.Label("Position", GUILayout.Width(83), GUILayout.Height(27.5f));
+                                GUILayout.Label(selectedObjectPos.x.ToString(), "TextField", GUILayout.Width(120));
+                                GUILayout.Label(selectedObjectPos.y.ToString(), "TextField", GUILayout.Width(120));
+                                GUILayout.Label(selectedObjectPos.z.ToString(), "TextField", GUILayout.Width(120));
                             }
 
-                            GUILayout.Label("Rotation");
                             using (new GUILayout.HorizontalScope())
                             {
-                                float.TryParse(GUILayout.TextField(selectedObjectRot.x.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectRot.x);
-                                float.TryParse(GUILayout.TextField(selectedObjectRot.y.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectRot.y);
-                                float.TryParse(GUILayout.TextField(selectedObjectRot.z.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectRot.z);
-                                float.TryParse(GUILayout.TextField(selectedObjectRot.w.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectRot.w);
+                                GUILayout.Label("Local Position", GUILayout.Width(83), GUILayout.Height(27.5f));
+                                float.TryParse(GUILayout.TextField(selectedObjectLocPos.x.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out selectedObjectLocPos.x);
+                                float.TryParse(GUILayout.TextField(selectedObjectLocPos.y.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out selectedObjectLocPos.y);
+                                float.TryParse(GUILayout.TextField(selectedObjectLocPos.z.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out selectedObjectLocPos.z);
                             }
 
-                            GUILayout.Label("Scale");
                             using (new GUILayout.HorizontalScope())
                             {
-                                float.TryParse(GUILayout.TextField(selectedObjectScale.x.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectScale.x);
-                                float.TryParse(GUILayout.TextField(selectedObjectScale.y.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectScale.y);
-                                float.TryParse(GUILayout.TextField(selectedObjectScale.z.ToString()), NumberStyles.Float, CultureInfo.InvariantCulture, out selectedObjectScale.z);
+                                GUILayout.Label("Rotation", GUILayout.Width(83), GUILayout.Height(27.5f));
+                                GUILayout.Label(selectedObjectRot.eulerAngles.x.ToString(), "TextField", GUILayout.Width(120));
+                                GUILayout.Label(selectedObjectRot.eulerAngles.y.ToString(), "TextField", GUILayout.Width(120));
+                                GUILayout.Label(selectedObjectRot.eulerAngles.z.ToString(), "TextField", GUILayout.Width(120));
+                            }
+
+                            using (new GUILayout.HorizontalScope())
+                            {
+                                GUILayout.Label("Local Rotation", GUILayout.Width(83), GUILayout.Height(27.5f));
+                                Vector3 locRotEulerAngles = selectedObjectLocRot.eulerAngles;
+                                float.TryParse(GUILayout.TextField(locRotEulerAngles.x.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out locRotEulerAngles.x);
+                                float.TryParse(GUILayout.TextField(locRotEulerAngles.y.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out locRotEulerAngles.y);
+                                float.TryParse(GUILayout.TextField(locRotEulerAngles.z.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out locRotEulerAngles.z);
+                                selectedObjectLocRot.eulerAngles = locRotEulerAngles;
+                            }
+
+                            using (new GUILayout.HorizontalScope())
+                            {
+                                GUILayout.Label("Scale", GUILayout.Width(83), GUILayout.Height(27.5f));
+                                float.TryParse(GUILayout.TextField(selectedObjectScale.x.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out selectedObjectScale.x);
+                                float.TryParse(GUILayout.TextField(selectedObjectScale.y.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out selectedObjectScale.y);
+                                float.TryParse(GUILayout.TextField(selectedObjectScale.z.ToString(), GUILayout.Width(120)), NumberStyles.Float, CultureInfo.CurrentUICulture, out selectedObjectScale.z);
                             }
                         }
 
@@ -422,7 +515,7 @@ namespace NitroxClient.Debuggers
                                 if (GUILayout.Button(behaviour.GetType().Name))
                                 {
                                     selectedMonoBehaviour = behaviour;
-                                    ActiveTab = GetTab("MonoBehaviour").Get();
+                                    ActiveTab = GetTab("MonoBehaviour").Value;
                                 }
                             }
                         }
@@ -430,7 +523,7 @@ namespace NitroxClient.Debuggers
                 }
                 else
                 {
-                    GUILayout.Label($"No selected GameObject\nClick on an object in '{GetTab("Hierarchy").Get().Name}'", "fillMessage");
+                    GUILayout.Label($"No selected GameObject\nClick on an object in '{GetTab("Hierarchy").Value.Name}'", "fillMessage");
                 }
             }
         }
@@ -457,7 +550,7 @@ namespace NitroxClient.Debuggers
                 }
                 else
                 {
-                    GUILayout.Label($"No selected MonoBehaviour\nClick on an object in '{GetTab("MonoBehaviour").Get().Name}'", "fillMessage");
+                    GUILayout.Label($"No selected MonoBehaviour\nClick on an object in '{GetTab("MonoBehaviour").Value.Name}'", "fillMessage");
                 }
             }
         }
@@ -471,7 +564,12 @@ namespace NitroxClient.Debuggers
                 {
                     string[] fieldTypeNames = field.FieldType.ToString().Split('.');
                     GUILayout.Label("[" + fieldTypeNames[fieldTypeNames.Length - 1] + "]: " + field.Name, "options_label");
-                    if (field.FieldType == typeof(bool))
+
+                    if (field.GetValue(selectedMonoBehaviour) == null)
+                    {
+                        GUILayout.Box("Field is null");
+                    }
+                    else if (field.FieldType == typeof(bool))
                     {
                         bool boolVal = bool.Parse(GetValue(field, selectedMonoBehaviour));
                         if (GUILayout.Button(boolVal.ToString()))
@@ -491,7 +589,7 @@ namespace NitroxClient.Debuggers
                         if (GUILayout.Button(field.Name))
                         {
                             selectedObject = (GameObject)field.GetValue(selectedMonoBehaviour);
-                            ActiveTab = GetTab("GameObject").Get();
+                            ActiveTab = GetTab("GameObject").Value;
                         }
                     }
                     else if (field.FieldType == typeof(Text))
@@ -518,10 +616,23 @@ namespace NitroxClient.Debuggers
                         }
 
                         GUIStyle style = new GUIStyle("box");
-                        style.fixedHeight = 250 * (img.width / img.height);
+                        style.fixedHeight = img.height * (250f / img.width);
                         style.fixedWidth = 250;
-
                         GUILayout.Box(img, style);
+                    }
+                    else if (field.FieldType == typeof(NitroxId))
+                    {
+                        GUILayout.Box(((NitroxId)field.GetValue(selectedMonoBehaviour)).ToString(), "options");
+                    }
+                    else if (field.FieldType == typeof(Int3))
+                    {
+                        Int3 value = (Int3)field.GetValue(selectedMonoBehaviour);
+
+                        GUILayout.Box(value.x + ", " + value.y + ", " + value.z, "options");
+                    }
+                    else if (field.FieldType.IsEnum)
+                    {
+                        GUILayout.Box(field.GetValue(selectedMonoBehaviour).ToString(), "options");
                     }
                     else
                     {
@@ -542,27 +653,39 @@ namespace NitroxClient.Debuggers
 
         private void RenderAllMonoBehaviourMethods(MonoBehaviour mono)
         {
+            using (new GUILayout.HorizontalScope("Box"))
+            {
+                showSystemMethods = GUILayout.Toggle(showSystemMethods, "Show System inherit mehods", GUILayout.Height(25));
+                showUnityMethods = GUILayout.Toggle(showUnityMethods, "Show Unity inherit mehods", GUILayout.Height(25));
+            }
+
             MethodInfo[] methods = mono.GetType().GetMethods(BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy).OrderBy(m => m.Name).ToArray();
             foreach (MethodInfo method in methods)
             {
-                using (new GUILayout.VerticalScope("Box"))
+                string methodeAssemblyName = method.DeclaringType.Assembly.GetName().Name;
+                if (!(!showSystemMethods && (methodeAssemblyName.Contains("System") || methodeAssemblyName.Contains("mscorlib"))) &&
+                    !(!showUnityMethods && methodeAssemblyName.Contains("UnityEngine")))
                 {
-                    GUILayout.Label(method.ToString());
-                    using (new GUILayout.HorizontalScope())
+
+                    using (new GUILayout.VerticalScope("Box"))
                     {
-                        // TODO: Allow methods with parameters to be called.
-                        if (!method.GetParameters().Any())
+                        GUILayout.Label(method.ToString());
+                        using (new GUILayout.HorizontalScope())
                         {
-                            if (GUILayout.Button("Invoke"))
+                            // TODO: Allow methods with parameters to be called.
+                            if (!method.GetParameters().Any())
                             {
-                                object result = method.Invoke(method.IsStatic ? null : mono, new object[0]);
-                                if (result != null)
+                                if (GUILayout.Button("Invoke", GUILayout.MaxWidth(150)))
                                 {
-                                    Log.InGame($"Invoked method {method.Name} which returned result: '{result}'.");
-                                }
-                                else
-                                {
-                                    Log.InGame($"Invoked method {method.Name}. Return value was NULL.");
+                                    object result = method.Invoke(method.IsStatic ? null : mono, new object[0]);
+                                    if (result != null)
+                                    {
+                                        Log.InGame($"Invoked method {method.Name} which returned result: '{result}'.");
+                                    }
+                                    else
+                                    {
+                                        Log.InGame($"Invoked method {method.Name}. Return value was NULL.");
+                                    }
                                 }
                             }
                         }
@@ -575,13 +698,14 @@ namespace NitroxClient.Debuggers
         {
             using (new GUILayout.HorizontalScope())
             {
-                GUILayout.Label(label, "bold");
-                editMode = GUILayout.Toggle(editMode, "EditMode");
+                GUILayout.Label(label, "bold", GUILayout.Height(25));
+                editMode = GUILayout.Toggle(editMode, "EditMode", GUILayout.Height(25));
                 sendToServer = Multiplayer.Main != null && GUILayout.Toggle(sendToServer, "Send to server");
-                if (GUILayout.Button("Save"))
+                if (GUILayout.Button("Save", GUILayout.Height(20)))
                 {
                     SaveChanges();
                 }
+                GUILayout.Space(5);
             }
         }
 
@@ -617,30 +741,44 @@ namespace NitroxClient.Debuggers
             return field.GetValue(instance).ToString();
         }
 
+        private void UpdateSelectedObject(GameObject item)
+        {
+            selectedObject = item.gameObject;
+            selectedObjectActiveSelf = selectedObject.activeSelf;
+            selectedObjectPos = selectedObject.transform.position;
+            selectedObjectRot = selectedObject.transform.rotation;
+            selectedObjectLocPos = selectedObject.transform.localPosition;
+            selectedObjectLocRot = selectedObject.transform.localRotation;
+            selectedObjectScale = selectedObject.transform.localScale;
+        }
+
         private void SaveChanges()
         {
-            selectedObject.SetActive(selectedObjectActiveSelf);
-            selectedObject.transform.position = selectedObjectPos;
-            selectedObject.transform.rotation = selectedObjectRot;
-            selectedObject.transform.localScale = selectedObjectScale;
-            if (sendToServer)
+            if (editMode)
             {
-                DebuggerAction.SendValueChangeToServer(selectedObject.transform, "enabled", selectedObjectActiveSelf);
-                DebuggerAction.SendValueChangeToServer(selectedObject.transform, "position", selectedObjectPos);
-                DebuggerAction.SendValueChangeToServer(selectedObject.transform, "rotation", selectedObjectRot);
-                DebuggerAction.SendValueChangeToServer(selectedObject.transform, "scale", selectedObjectScale);
-            }
-
-            foreach (DebuggerAction action in actionList)
-            {
-                action.SaveFieldValue();
+                selectedObject.SetActive(selectedObjectActiveSelf);
+                selectedObject.transform.localPosition = selectedObjectLocPos;
+                selectedObject.transform.localRotation = selectedObjectLocRot;
+                selectedObject.transform.localScale = selectedObjectScale;
                 if (sendToServer)
                 {
-                    action.SendValueChangeToServer();
+                    DebuggerAction.SendValueChangeToServer(selectedObject.transform, "enabled", selectedObjectActiveSelf);
+                    DebuggerAction.SendValueChangeToServer(selectedObject.transform, "localPosition", selectedObjectLocPos);
+                    DebuggerAction.SendValueChangeToServer(selectedObject.transform, "localRotation", selectedObjectLocRot);
+                    DebuggerAction.SendValueChangeToServer(selectedObject.transform, "scale", selectedObjectScale);
+                }
+
+                foreach (DebuggerAction action in actionList)
+                {
+                    action.SaveFieldValue();
+                    if (sendToServer)
+                    {
+                        action.SendValueChangeToServer();
+                    }
                 }
             }
-
             actionList.Clear();
+            UpdateSelectedObject(selectedObject);
         }
     }
 
@@ -699,10 +837,10 @@ namespace NitroxClient.Debuggers
         {
             if (Multiplayer.Main != null)
             {
-                string guid = GetGameObjectPath(Component.gameObject);
+                string path = GetGameObjectPath(Component.gameObject);
                 int objectNumber = Component.gameObject.transform.GetSiblingIndex();
                 int componentNumber = GetComponentChildNumber(Component);
-                NitroxServiceLocator.LocateService<Debugger>().SceneDebuggerChange(guid, objectNumber, componentNumber, Field.Name, Value);
+                NitroxServiceLocator.LocateService<Debugger>().SceneDebuggerChange(path, objectNumber, componentNumber, Field.Name, Value);
             }
         }
 

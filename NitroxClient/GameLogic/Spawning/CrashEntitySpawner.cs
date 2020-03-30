@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using NitroxClient.GameLogic.Helper;
+﻿using NitroxClient.MonoBehaviours;
 using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Helper;
@@ -12,27 +11,19 @@ namespace NitroxClient.GameLogic.Spawning
         /**
          * Crash fish are spawned by the CrashHome in the Monobehaviours Start method
          */
-        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent)
+        public Optional<GameObject> Spawn(Entity entity, Optional<GameObject> parent, EntityCell cellRoot)
         {
-            if (parent.IsPresent())
+            if (parent.HasValue)
             {
-                CrashHome crashHome = parent.Get().GetComponent<CrashHome>();
-                LargeWorldStreamer.main.StartCoroutine(WaitToAssignGuid(entity.Guid, crashHome));
+                CrashHome crashHome = parent.Value.GetComponent<CrashHome>();
+
+                GameObject gameObject = Object.Instantiate(crashHome.crashPrefab, Vector3.zero, Quaternion.Euler(-90f, 0f, 0f));
+                gameObject.transform.SetParent(crashHome.transform, false);
+                NitroxEntity.SetNewId(gameObject, entity.Id);
+                crashHome.ReflectionSet("crash", gameObject.GetComponent<Crash>());
             }
 
-            return Optional<GameObject>.Empty();
-        }
-
-        /**
-         * Wait for the next fixed update so the CrashHome can load and spawn the Crash fish.
-         * If we try to manually spawn the crash fish (and assign to the CrashHome) it will be at
-         * the wrong orientation.  Maybe someone can figure out why this happens to we can create 
-         * it without leveraging this hack.
-         */
-        private IEnumerator WaitToAssignGuid(string guid, CrashHome crashHome)
-        {
-            yield return new WaitForFixedUpdate();
-            ((Crash)crashHome.ReflectionGet("crash")).gameObject.SetNewGuid(guid);
+            return Optional.Empty;
         }
 
         public bool SpawnsOwnChildren()

@@ -1,30 +1,39 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using NitroxModel.DataStructures;
+using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Helper;
 using NitroxModel.MultiplayerSession;
 using NitroxModel.Packets;
-using NitroxServer.Communication;
-using NitroxServer.GameLogic.Players;
-using NitroxServer.UnityStubs;
+using NitroxServer.Communication.NetworkingLayer;
+using NitroxServer.ConfigParser;
 
 namespace NitroxServer.GameLogic
 {
     // TODO: These methods a a little chunky. Need to look at refactoring just to clean them up and get them around 30 lines a piece.
     public class PlayerManager
     {
-        private readonly Dictionary<Connection, ConnectionAssets> assetsByConnection = new Dictionary<Connection, ConnectionAssets>();
-        private readonly PlayerData playerData;
+        private readonly Dictionary<NitroxConnection, ConnectionAssets> assetsByConnection = new Dictionary<NitroxConnection, ConnectionAssets>();
+        private readonly ServerConfig serverConfig;
         private readonly Dictionary<string, PlayerContext> reservations = new Dictionary<string, PlayerContext>();
         private readonly HashSet<string> reservedPlayerNames = new HashSet<string>();
+        private readonly Dictionary<string, Player> allPlayersByName;
+        private ushort currentPlayerId = 0;
 
-        public PlayerManager(PlayerData playerData)
+        private readonly PlayerStatsData defaultPlayerStats;
+
+        public PlayerManager(List<Player> players, ServerConfig serverConfig)
         {
-            this.playerData = playerData;
+            allPlayersByName = players.ToDictionary(x => x.Name);            
+            currentPlayerId = (players.Count == 0) ? (ushort) 0 : players.Max(x => x.Id);
+            defaultPlayerStats = serverConfig.DefaultPlayerStats;
+
+            this.serverConfig = serverConfig;
         }
 
-        public List<Player> GetPlayers()
+        public List<Player> GetConnectedPlayers()
         {
             lock (assetsByConnection)
             {
@@ -32,36 +41,59 @@ namespace NitroxServer.GameLogic
             }
         }
 
+        public List<Player> GetAllPlayers()
+        {
+            lock(allPlayersByName)
+            {
+                return new List<Player>(allPlayersByName.Values);
+            }
+        }
+
         public MultiplayerSessionReservation ReservePlayerContext(
-            Connection connection,
+            NitroxConnection connection,
             PlayerSettings playerSettings,
             AuthenticationContext authenticationContext,
             string correlationId)
         {
             lock (assetsByConnection)
             {
+                // TODO: ServerPassword in NitroxClient
+
+                if (!string.IsNullOrEmpty(serverConfig.ServerPassword) && (!authenticationContext.ServerPassword.HasValue || (authenticationContext.ServerPassword.Value != serverConfig.ServerPassword)))
+                {
+                    MultiplayerSessionReservationState rejectedState = MultiplayerSessionReservationState.REJECTED | MultiplayerSessionReservationState.AUTHENTICATION_FAILED;
+                    return new MultiplayerSessionReservation(correlationId, rejectedState);
+                }
+
+                if (reservedPlayerNames.Count >= serverConfig.MaxConnections)
+                {
+                    MultiplayerSessionReservationState rejectedState = MultiplayerSessionReservationState.REJECTED | MultiplayerSessionReservationState.SERVER_PLAYER_CAPACITY_REACHED;
+                    return new MultiplayerSessionReservation(correlationId, rejectedState);
+                }
+
+                string playerName = authenticationContext.Username;
+                if (reservedPlayerNames.Contains(playerName))
+                {
+                    MultiplayerSessionReservationState rejectedState = MultiplayerSessionReservationState.REJECTED | MultiplayerSessionReservationState.UNIQUE_PLAYER_NAME_CONSTRAINT_VIOLATED;
+                    return new MultiplayerSessionReservation(correlationId, rejectedState);
+                }
+
                 ConnectionAssets assetPackage;
                 assetsByConnection.TryGetValue(connection, out assetPackage);
-
                 if (assetPackage == null)
                 {
                     assetPackage = new ConnectionAssets();
                     assetsByConnection.Add(connection, assetPackage);
+                    reservedPlayerNames.Add(playerName);
                 }
 
-                string playerName = authenticationContext.Username;
+                Player player;
+                allPlayersByName.TryGetValue(playerName, out player);
 
-                if (reservedPlayerNames.Contains(playerName))
-                {
-                    MultiplayerSessionReservationState rejectedState = MultiplayerSessionReservationState.Rejected | MultiplayerSessionReservationState.UniquePlayerNameConstraintViolated;
-                    return new MultiplayerSessionReservation(correlationId, rejectedState);
-                }
+                bool hasSeenPlayerBefore = player != null;
+                ushort playerId = (hasSeenPlayerBefore) ? player.Id : ++currentPlayerId;
 
-                reservedPlayerNames.Add(playerName);
-
-                bool hasSeenPlayerBefore = playerData.hasSeenPlayerBefore(playerName);
-                PlayerContext playerContext = new PlayerContext(playerName, playerData.GetPlayerId(playerName), !hasSeenPlayerBefore, playerSettings);
-                ushort playerId = playerContext.PlayerId;
+                PlayerContext playerContext = new PlayerContext(playerName, playerId, !hasSeenPlayerBefore, playerSettings);
                 string reservationKey = Guid.NewGuid().ToString();
 
                 reservations.Add(reservationKey, playerContext);
@@ -71,7 +103,7 @@ namespace NitroxServer.GameLogic
             }
         }
 
-        public Player CreatePlayer(Connection connection, string reservationKey, out bool wasBrandNewPlayer)
+        public Player PlayerConnected(NitroxConnection connection, string reservationKey, out bool wasBrandNewPlayer)
         {
             lock (assetsByConnection)
             {
@@ -80,12 +112,22 @@ namespace NitroxServer.GameLogic
                 Validate.NotNull(playerContext);
 
                 wasBrandNewPlayer = playerContext.WasBrandNewPlayer;
+                
+                Player player;
+                
+                lock (allPlayersByName)
+                {
+                    if (!allPlayersByName.TryGetValue(playerContext.PlayerName, out player))
+                    {
+                        player = new Player(playerContext.PlayerId, playerContext.PlayerName, playerContext, connection, NitroxVector3.Zero, new NitroxId(), Optional.Empty, Perms.PLAYER, defaultPlayerStats, new List<EquippedItemData>(), new List<EquippedItemData>());
+                        allPlayersByName[playerContext.PlayerName] = player;
+                    }
+                }
 
-                // Load previously persisted data for this player.
-                Vector3 position = playerData.GetPosition(playerContext.PlayerName);
-                Optional<string> subRootGuid = playerData.GetSubRootGuid(playerContext.PlayerName);
+                // TODO: make a ConnectedPlayer wrapper so this is not stateful
+                player.PlayerContext = playerContext;
+                player.connection = connection;
 
-                Player player = new Player(playerContext, connection, position, subRootGuid);
                 assetPackage.Player = player;
                 assetPackage.ReservationKey = null;
                 reservations.Remove(reservationKey);
@@ -94,7 +136,7 @@ namespace NitroxServer.GameLogic
             }
         }
 
-        public void PlayerDisconnected(Connection connection)
+        public void PlayerDisconnected(NitroxConnection connection)
         {
             lock (assetsByConnection)
             {
@@ -141,13 +183,24 @@ namespace NitroxServer.GameLogic
             }
         }
 
-        public Player GetPlayer(Connection connection)
+        public Player GetPlayer(NitroxConnection connection)
         {
             lock (assetsByConnection)
             {
                 ConnectionAssets assetPackage = null;
                 assetsByConnection.TryGetValue(connection, out assetPackage);
                 return assetPackage?.Player;
+            }
+        }
+
+        public Optional<Player> GetPlayer(string playerName)
+        {
+            lock (allPlayersByName)
+            {
+                Player player;
+                allPlayersByName.TryGetValue(playerName, out player);
+
+                return Optional.OfNullable(player);
             }
         }
 

@@ -1,26 +1,24 @@
 ﻿using NitroxClient.Communication.Abstract;
 using NitroxClient.Communication.Packets.Processors.Abstract;
-using NitroxClient.GameLogic.Helper;
-using NitroxClient.Unity.Helper;
-using NitroxModel.Packets;
-using UnityEngine;
+using NitroxClient.GameLogic;
+using NitroxModel_Subnautica.Packets;
 
 namespace NitroxClient.Communication.Packets.Processors
 {
     public class CyclopsChangeEngineModeProcessor : ClientPacketProcessor<CyclopsChangeEngineMode>
     {
         private readonly IPacketSender packetSender;
+        private readonly Cyclops cyclops;
 
-        public CyclopsChangeEngineModeProcessor(IPacketSender packetSender)
+        public CyclopsChangeEngineModeProcessor(IPacketSender packetSender, Cyclops cyclops)
         {
             this.packetSender = packetSender;
+            this.cyclops = cyclops;
         }
 
         public override void Process(CyclopsChangeEngineMode motorPacket)
         {
-            GameObject cyclops = GuidHelper.RequireObjectFrom(motorPacket.Guid);
-            CyclopsMotorMode motorMode = cyclops.RequireComponentInChildren<CyclopsMotorMode>();
-            motorMode.BroadcastMessage("SetCyclopsMotorMode", motorPacket.Mode, SendMessageOptions.RequireReceiver);
+            cyclops.ChangeEngineMode(motorPacket.Id, motorPacket.Mode);
         }
     }
 }

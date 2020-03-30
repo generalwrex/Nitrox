@@ -4,13 +4,13 @@ using NitroxModel.DataStructures.GameLogic;
 
 namespace NitroxServer.ConsoleCommands
 {
-    public class ExitCommand : Command
+    internal class ExitCommand : Command
     {
-        public ExitCommand() : base("exit", Perms.ADMIN, "", "Exits the server", new[] {"stop", "halt", "quit", "abort"})
+        public ExitCommand() : base("stop", Perms.ADMIN, "", "Stops the server", new[] { "exit", "halt", "quit" })
         {
         }
 
-        public override void RunCommand(string[] args, Optional<Player> player)
+        public override void RunCommand(string[] args, Optional<Player> sender)
         {
             Server.Instance.Stop();
         }

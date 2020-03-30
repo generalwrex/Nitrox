@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>NitroxClient</RootNamespace>
     <AssemblyName>NitroxClient</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -24,7 +24,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>RELEASE,TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
@@ -42,11 +42,9 @@
     <Reference Include="Autofac.Configuration, Version=2.6.3.862, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
       <HintPath>..\packages\Autofac.2.6.3.862\lib\NET35\Autofac.Configuration.dll</HintPath>
     </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>$(SubnauticaManaged)\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.UI">
-      <HintPath>$(SubnauticaManaged)\UnityEngine.UI.dll</HintPath>
+    <Reference Include="LiteNetLib, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\packages\LiteNetLib.0.8.2-beta\lib\net35\LiteNetLib.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="iTween">
       <HintPath>$(SubnauticaManaged)\iTween.dll</HintPath>
@@ -60,21 +58,237 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AccessibilityModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.AccessibilityModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AIModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.AIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ARModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ARModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AssetBundleModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.AssetBundleModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ClothModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ClothModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ClusterInputModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ClusterInputModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ClusterRendererModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ClusterRendererModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CrashReportingModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.CrashReportingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.DirectorModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.DirectorModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.FileSystemHttpModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.FileSystemHttpModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.GameCenterModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.GameCenterModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.GridModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.GridModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.HotReloadModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.HotReloadModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ImageConversionModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.InputModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.InputLegacyModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.JSONSerializeModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.LocalizationModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.LocalizationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ParticleSystemModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PerformanceReportingModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.PerformanceReportingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.Physics2DModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.Physics2DModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ProfilerModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ProfilerModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ScreenCaptureModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.ScreenCaptureModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.SharedInternalsModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.SharedInternalsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.SpriteMaskModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.SpriteMaskModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.SpriteShapeModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.SpriteShapeModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.StreamingModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.StreamingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.SubstanceModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.SubstanceModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TerrainModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.TerrainModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TerrainPhysicsModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.TerrainPhysicsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TilemapModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.TilemapModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TLSModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.TLSModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIElementsModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UIElementsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UmbraModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UmbraModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UNETModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UNETModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityAnalyticsModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityAnalyticsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityConnectModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityConnectModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAssetBundleModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityWebRequestAssetBundleModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestTextureModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestWWWModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.UnityWebRequestWWWModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.VehiclesModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.VehiclesModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.VideoModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.VideoModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.VRModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.VRModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.WindModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.WindModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.XRModule">
+      <HintPath>$(SubnauticaManaged)\UnityEngine.XRModule.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\AssemblyInfoCommon.cs">
+      <Link>Properties\AssemblyInfoCommon.cs</Link>
+    </Compile>
     <Compile Include="ClientAutoFacRegistrar.cs" />
-    <Compile Include="ClientExtensions.cs" />
+    <Compile Include="Communication\PacketReceiver.cs" />
+    <Compile Include="Communication\Packets\Processors\BedEnterProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\RadioPlayPendingMessageProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\ExosuitArmActionProcessor.cs" />
+    <Compile Include="Debuggers\EntityDebugger.cs" />
+    <Compile Include="GameLogic\Bases\Spawning\BasePieceSpawnProcessor.cs" />
+    <Compile Include="GameLogic\Bases\Spawning\BaseLadderSpawnProcessor.cs" />
+    <Compile Include="GameLogic\Bases\Spawning\NoOpBasePieceSpawnProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\CyclopsInitialAsyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\PlayerModulesInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\StorageSlotsInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\StoryGoalInitialSyncProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsChangeSonarModeProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsDecoyLaunchProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsFireSuppressionProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsSonarPingProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\StorageSlotAddItemProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\StorageSlotRemoveItemProcessor.cs" />
+    <Compile Include="GameLogic\ExosuitModuleEvent.cs" />
+    <Compile Include="GameLogic\InitialSync\InventoryItemsInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\EquippedItemInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\BuildingInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\Base\InitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\BasePieceMetadataInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\PlayerPositionInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\VehicleInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\RemotePlayerInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\PdaInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\GlobalRootInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\PlayerInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\InitialSync\EscapePodInitialSyncProcessor.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\ScubaSuitVisibiliyHandler.cs" />
+    <Compile Include="GameLogic\Spawning\CellRootSpawner.cs" />
+    <Compile Include="GameLogic\StorageSlots.cs" />
+    <Compile Include="Helpers\NitroxProtobufSerializer.cs" />
+    <Compile Include="MonoBehaviours\Gui\InGame\PlayerKickedModal.cs" />
+    <Compile Include="MonoBehaviours\Gui\MainMenu\LoadingScreenVersionText.cs" />
+    <Compile Include="MonoBehaviours\NitroxEntity.cs" />
+    <Compile Include="Unity\Helper\RendererHelpers.cs" />
     <Compile Include="Communication\Abstract\IClient.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsDestroyedProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsDamagePointHealthChangedProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsFireCreatedProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\FireDousedProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsDamageProcessor.cs" />
     <Compile Include="Communication\Abstract\IMultiplayerSession.cs" />
     <Compile Include="Communication\Abstract\IMultiplayerSessionConnectionContext.cs" />
     <Compile Include="Communication\Abstract\IMultiplayerSessionConnectionState.cs" />
     <Compile Include="Communication\Abstract\IMultiplayerSessionState.cs" />
     <Compile Include="Communication\Abstract\IPacketSender.cs" />
+    <Compile Include="Communication\NetworkingLayer\LiteNetLib\LiteNetLibClient.cs" />
     <Compile Include="Communication\Packets\Processors\EscapePodRepairProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\EscapePodRadioRepairProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\RemotePlayerEquipmentAddedProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\RemotePlayerEquipmentRemovedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\SubRootChangedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\SceneDebuggerChangeProcessor.cs" />
-    <Compile Include="Communication\DeferringPacketReceiver.cs" />
     <Compile Include="Communication\Exceptions\ClientConnectionFailedException.cs" />
     <Compile Include="Communication\MultiplayerSession\ConnectionState\AwaitingReservationCredentials.cs" />
     <Compile Include="Communication\MultiplayerSession\ConnectionState\AwaitingSessionReservation.cs" />
@@ -100,8 +314,8 @@
     <Compile Include="Communication\Packets\Processors\ConstructorBeginCraftingProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\CreatureActionChangedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\CyclopsActivateHornProcessor.cs" />
-    <Compile Include="Communication\Packets\Processors\CyclopsActivateShieldProcessor.cs" />
-    <Compile Include="Communication\Packets\Processors\CyclopsBeginSilentRunningProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsChangeShieldModeProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\CyclopsChangeSilentRunningProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\CyclopsChangeEngineModeProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\CyclopsToggleEngineStateProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\CyclopsToggleFloodlightsProcessor.cs" />
@@ -110,8 +324,8 @@
     <Compile Include="Communication\Packets\Processors\DeconstructionCompletedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\DisconnectProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\EntityTransformUpdatesProcessor.cs" />
-    <Compile Include="Communication\Packets\Processors\EquipmentAddItemProcessor.cs" />
-    <Compile Include="Communication\Packets\Processors\EquipmentRemoveItemProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\ModuleAddedProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\ModuleRemovedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\FabricatorBeginCraftingProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\FabricatorItemPickupProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\ItemContainerAddProcessor.cs" />
@@ -129,6 +343,7 @@
     <Compile Include="Communication\Packets\Processors\SimulationOwnershipResponseProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\PlayerKickedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\VehicleChildUpdateProcessor.cs" />
+    <Compile Include="Communication\Packets\Processors\VehicleCreatedProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\VehicleUndockingProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\VehicleDockingProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\VehicleOnPilotModeChangedProcessor.cs" />
@@ -150,11 +365,10 @@
     <Compile Include="Communication\Packets\Processors\VehicleColorChangeProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\VehicleMovementProcessor.cs" />
     <Compile Include="Communication\Packets\Processors\VehicleNameChangeProcessor.cs" />
-    <Compile Include="Communication\UdpClient.cs" />
     <Compile Include="Debuggers\BaseDebugger.cs" />
     <Compile Include="Debuggers\NetworkDebugger.cs" />
     <Compile Include="Debuggers\SceneDebugger.cs" />
-    <Compile Include="MonoBehaviours\DiscordRP\DiscordController.cs" />
+    <Compile Include="MonoBehaviours\DiscordRP\DiscordRPController.cs" />
     <Compile Include="MonoBehaviours\DiscordRP\DiscordRpc.cs" />
     <Compile Include="GameLogic\AI.cs" />
     <Compile Include="GameLogic\Bases\Metadata\NoOpBasePieceMetadataProcessor.cs" />
@@ -163,30 +377,43 @@
     <Compile Include="GameLogic\Bases\Metadata\SignMetadataProcessor.cs" />
     <Compile Include="GameLogic\Building.cs" />
     <Compile Include="GameLogic\Bases\BuildThrottlingQueue.cs" />
-    <Compile Include="GameLogic\Chat.cs" />
     <Compile Include="GameLogic\ChatUI\ChatLogEntry.cs" />
     <Compile Include="GameLogic\ChatUI\PlayerChat.cs" />
     <Compile Include="GameLogic\Constructor.cs" />
     <Compile Include="GameLogic\Crafting.cs" />
     <Compile Include="GameLogic\Cyclops.cs" />
     <Compile Include="GameLogic\DevConsole.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\DiveSuitVisibilityHandler.cs" />
     <Compile Include="GameLogic\Entities.cs" />
     <Compile Include="GameLogic\EquipmentSlots.cs" />
     <Compile Include="GameLogic\Debugger.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\Abstract\EquipmentVisibilityHandler.cs" />
     <Compile Include="GameLogic\EscapePodManager.cs" />
+    <Compile Include="GameLogic\Fires.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\FinsVisibilityHandler.cs" />
     <Compile Include="GameLogic\Helper\VehicleChildObjectIdentifierHelper.cs" />
     <Compile Include="GameLogic\HUD\DenyOwnershipHand.cs" />
     <Compile Include="GameLogic\HUD\PlayerVitalsManager.cs" />
     <Compile Include="GameLogic\Helper\EquipmentHelper.cs" />
-    <Compile Include="GameLogic\Helper\GuidHelper.cs" />
     <Compile Include="GameLogic\Helper\InventoryContainerHelper.cs" />
     <Compile Include="GameLogic\Helper\SerializationHelper.cs" />
     <Compile Include="GameLogic\Helper\TransientLocalObjectManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\Abstract\IEquipmentVisibilityHandler.cs" />
     <Compile Include="GameLogic\KnownTechEntry.cs" />
     <Compile Include="GameLogic\PDAEncyclopediaEntry.cs" />
     <Compile Include="GameLogic\PDAManagerEntry.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\ILocalNitroxPlayer.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\INitroxPlayer.cs" />
+    <Compile Include="GameLogic\PlayerModel\PlayerModelManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\Abstract\ILocalNitroxPlayer.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\Strategy\HueSwapper.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\DiveSuitColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\FinColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\Abstract\IColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\Abstract\IColorSwapStrategy.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\Strategy\HueSaturationVibrancySwapper.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\Strategy\AlphaChannelSwapper.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\TextureBlock.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\ColorSwapAsyncOperation.cs" />
+    <Compile Include="GameLogic\PlayerModel\Abstract\INitroxPlayer.cs" />
     <Compile Include="GameLogic\Interior.cs" />
     <Compile Include="GameLogic\Item.cs" />
     <Compile Include="GameLogic\ItemContainers.cs" />
@@ -197,28 +424,37 @@
     <Compile Include="GameLogic\MovementHelper.cs" />
     <Compile Include="GameLogic\LocalPlayer.cs" />
     <Compile Include="GameLogic\PlayerManager.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\Abstract\IPlayerModelBuilder.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\ColorValueRange.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\HsvColorFilter.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\PlayerModelDirector.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\PlayerPingBuilder.cs" />
-    <Compile Include="GameLogic\PlayerModelBuilder\RegularDiveSuitBuilder.cs" />
+    <Compile Include="GameLogic\PlayerModel\Abstract\IPlayerModelBuilder.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\ColorValueRange.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\HsvSwapper.cs" />
+    <Compile Include="GameLogic\PlayerModel\PlayerEquipmentConstants.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\RebreatherColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\RadiationHelmetColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\RadiationSuitColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\RadiationSuitVestColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\RadiationTankColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\StillSuitColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\ReinforcedSuitColorSwapManager.cs" />
+    <Compile Include="GameLogic\PlayerModel\ColorSwap\ScubaTankColorSwapManager.cs" />
     <Compile Include="GameLogic\PlayerPreferences\IPreferenceStateProvider.cs" />
     <Compile Include="GameLogic\PlayerPreferences\PlayerPreference.cs" />
     <Compile Include="GameLogic\PlayerPreferences\PlayerPreferenceManager.cs" />
     <Compile Include="GameLogic\PlayerPreferences\PlayerPreferenceState.cs" />
-    <Compile Include="GameLogic\PlayerPreferences\UnityPreferenceStateStateProvider.cs" />
+    <Compile Include="GameLogic\PlayerPreferences\UnityPreferenceStateProvider.cs" />
     <Compile Include="GameLogic\Power.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\RadiationSuitVisibilityHandler.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\ReinforcedSuitVisibilityHandler.cs" />
     <Compile Include="GameLogic\RemotePlayer.cs" />
+    <Compile Include="GameLogic\RemotePlayerManagerExtensions.cs" />
     <Compile Include="GameLogic\SeamothModulesEvent.cs" />
     <Compile Include="GameLogic\Signs.cs" />
     <Compile Include="GameLogic\SimulationOwnership.cs" />
     <Compile Include="GameLogic\Spawning\SerializedEntitySpawner.cs" />
-    <Compile Include="GameLogic\Spawning\NitroxEntity.cs" />
     <Compile Include="GameLogic\Spawning\ReefbackEntitySpawner.cs" />
     <Compile Include="GameLogic\Spawning\CrashEntitySpawner.cs" />
     <Compile Include="GameLogic\Spawning\DefaultEntitySpawner.cs" />
     <Compile Include="GameLogic\Spawning\EntitySpawner.cs" />
+    <Compile Include="GameLogic\PlayerModel\Equipment\StillSuitVisibilityHandler.cs" />
     <Compile Include="GameLogic\Terrain.cs" />
     <Compile Include="GameLogic\Vehicles.cs" />
     <Compile Include="Map\VisibleCells.cs" />
@@ -226,7 +462,7 @@
     <Compile Include="MonoBehaviours\AnimationSender.cs" />
     <Compile Include="MonoBehaviours\DiscordRP\DiscordJoinRequestGui.cs" />
     <Compile Include="MonoBehaviours\EntityPositionBroadcaster.cs" />
-    <Compile Include="MonoBehaviours\Gui\Chat\PlayerChatEntry.cs" />
+    <Compile Include="MonoBehaviours\Gui\Chat\PlayerChatInputField.cs" />
     <Compile Include="MonoBehaviours\Gui\Chat\PlayerChatLog.cs" />
     <Compile Include="MonoBehaviours\Gui\HUD\RemotePlayerVitals.cs" />
     <Compile Include="MonoBehaviours\Gui\Helper\SmoothedValue.cs" />
@@ -236,7 +472,7 @@
     <Compile Include="MonoBehaviours\Gui\Input\KeyBindings\Actions\KeyBindingAction.cs" />
     <Compile Include="MonoBehaviours\Gui\Input\KeyBindings\DefaultKeyBinding.cs" />
     <Compile Include="MonoBehaviours\Gui\Input\KeyBindings\KeyBinding.cs" />
-    <Compile Include="MonoBehaviours\Gui\MainMenu\ConsoleJoinServer.cs" />
+    <Compile Include="MonoBehaviours\Gui\MainMenu\WarpToCommand.cs" />
     <Compile Include="MonoBehaviours\Gui\MainMenu\JoinServer.cs" />
     <Compile Include="MonoBehaviours\Gui\MainMenu\MainMenuMods.cs" />
     <Compile Include="MonoBehaviours\Gui\MainMenu\MainMenuMultiplayerPanel.cs" />
@@ -265,14 +501,15 @@
     <Compile Include="Unity\Helper\GameObjectHelper.cs" />
     <Compile Include="Unity\Helper\MathUtil.cs" />
     <Compile Include="Unity\Helper\StringUtils.cs" />
+    <Compile Include="Unity\Smoothing\ExosuitSmoothRotation.cs" />
     <Compile Include="Unity\Smoothing\SmoothParameter.cs" />
     <Compile Include="Unity\Smoothing\SmoothRotation.cs" />
     <Compile Include="Unity\Smoothing\SmoothVector.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\lidgren-network-gen3\Lidgren.Network\Lidgren.Network.csproj">
-      <Project>{69BEE16A-B6E7-4642-8081-3928B32455DF}</Project>
-      <Name>Lidgren.Network</Name>
+    <ProjectReference Include="..\NitroxModel-Subnautica\NitroxModel-Subnautica.csproj">
+      <Project>{0a377218-6b36-4522-89a3-a39cfc999209}</Project>
+      <Name>NitroxModel-Subnautica</Name>
     </ProjectReference>
     <ProjectReference Include="..\NitroxModel\NitroxModel.csproj">
       <Project>{b16f4de7-21ad-4fef-955b-0a5a365fa4e3}</Project>

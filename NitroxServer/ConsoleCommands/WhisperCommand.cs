@@ -4,32 +4,29 @@ using NitroxServer.ConsoleCommands.Abstract;
 using NitroxServer.GameLogic;
 using NitroxModel.Packets;
 using NitroxModel.DataStructures.Util;
-using NitroxModel.Logger;
 
 namespace NitroxServer.ConsoleCommands
 {
-    class WhisperCommand : Command
+    internal class WhisperCommand : Command
     {
         private readonly PlayerManager playerManager;
 
-        public WhisperCommand(PlayerManager playerManager) : base("w", Perms.PLAYER, "w <PlayerName> <msg>")
+        public WhisperCommand(PlayerManager playerManager) : base("msg", Perms.PLAYER, "{name} {msg}", "Sends a private message to a player", new string[] { "m", "whisper", "w" })
         {
             this.playerManager = playerManager;
         }
 
-        public override void RunCommand(string[] args, Optional<Player> player)
+        public override void RunCommand(string[] args, Optional<Player> sender)
         {
             Player foundPlayer;
 
             if (playerManager.TryGetPlayerByName(args[0], out foundPlayer))
             {
-                args = args.Skip(1).ToArray();
+                string message = string.Join(" ", args.Skip(1).ToArray());
 
-                string message = string.Join(" ", args);
-
-                if (player.IsPresent())
+                if (sender.HasValue)
                 {
-                    foundPlayer.SendPacket(new ChatMessage(player.Get().Id, message));
+                    foundPlayer.SendPacket(new ChatMessage(sender.Value.Id, message));
                 }
                 else
                 {
@@ -38,10 +35,7 @@ namespace NitroxServer.ConsoleCommands
             }
             else
             {
-                string errorMessage = "Unable to whisper " + args[0] + " - player not found.";
-
-                SendServerMessageIfPlayerIsPresent(player, errorMessage);
-                Log.Info(errorMessage);
+                Notify(sender, $"Unable to whisper {args[0]}, player not found.");
             }
         }
 

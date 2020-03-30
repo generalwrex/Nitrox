@@ -1,7 +1,5 @@
 ﻿using NitroxClient.Communication.Packets.Processors.Abstract;
 using NitroxClient.GameLogic;
-using NitroxModel.DataStructures.GameLogic;
-using NitroxModel.DataStructures.Util;
 using NitroxModel.Packets;
 
 namespace NitroxClient.Communication.Packets.Processors
@@ -19,7 +17,7 @@ namespace NitroxClient.Communication.Packets.Processors
 
         public override void Process(VehicleChildUpdate vehicleChildUpdate)
         {
-            vehicles.UpdateVehicleChildren(vehicleChildUpdate.VehicleGuid, vehicleChildUpdate.InteractiveChildIdentifiers);
+            vehicles.UpdateVehicleChildren(vehicleChildUpdate.VehicleId, vehicleChildUpdate.InteractiveChildIdentifiers);
         }
     }
 }

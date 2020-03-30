@@ -1,4 +1,5 @@
-﻿using NitroxModel.DataStructures.GameLogic;
+﻿using NitroxModel.DataStructures;
+using NitroxModel.DataStructures.GameLogic;
 using NitroxModel.DataStructures.Util;
 using NitroxModel.Logger;
 using NitroxModel.Packets;
@@ -11,28 +12,28 @@ namespace NitroxServer.Communication.Packets.Processors
     class VehicleDockingProcessor : AuthenticatedPacketProcessor<VehicleDocking>
     {
         private readonly PlayerManager playerManager;
-        private readonly VehicleData vehicleData;
+        private readonly VehicleManager vehicleManager;
 
-        public VehicleDockingProcessor(PlayerManager playerManager, VehicleData vehicleData)
+        public VehicleDockingProcessor(PlayerManager playerManager, VehicleManager vehicleManager)
         {
             this.playerManager = playerManager;
-            this.vehicleData = vehicleData;
+            this.vehicleManager = vehicleManager;
         }
 
         public override void Process(VehicleDocking packet, Player player)
         {
-            Optional<VehicleModel> vehicle = vehicleData.GetVehicleModel(packet.VehicleGuid);
-            if (!vehicle.IsPresent())
+            Optional<VehicleModel> vehicle = vehicleManager.GetVehicleModel(packet.VehicleId);
+
+            if (!vehicle.HasValue)
             {
-                Log.Error("VehicleDocking received for vehicle guid {0} that does not exist!", packet.VehicleGuid);
+                Log.Error("VehicleDocking received for vehicle id {0} that does not exist!", packet.VehicleId);
                 return;
             }
 
-            VehicleModel vehicleModel = vehicle.Get();
-            vehicleModel.DockingBayGuid = Optional<string>.Of(packet.DockGuid);
+            VehicleModel vehicleModel = vehicle.Value;
+            vehicleModel.DockingBayId = Optional.Of(packet.DockId);
 
-            // We don't need to send this packet to the other clients, as those clients
-            // will automatically dock the vehicle when it enters the trigger
+            playerManager.SendPacketToOtherPlayers(packet, player);
         }
     }
 }

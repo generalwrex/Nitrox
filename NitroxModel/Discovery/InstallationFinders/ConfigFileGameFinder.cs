@@ -11,22 +11,28 @@ namespace NitroxModel.Discovery.InstallationFinders
     {
         private const string FILENAME = "path.txt";
 
-        public Optional<string> FindGame(List<string> errors)
+        public Optional<string> FindGame(List<string> errors = null)
         {
             if (!File.Exists(FILENAME))
             {
-                errors.Add($@"Game installation directory config file is not set. Create a '{FILENAME}' in directory: '{Directory.GetCurrentDirectory()}' with the path to the Subnautica installation directory.");
-                return Optional<string>.Empty();
+                errors?.Add($@"Game installation directory config file is not set. Create a '{FILENAME}' in directory: '{Directory.GetCurrentDirectory()}' with the path to the Subnautica installation directory.");
+                return Optional.Empty;
             }
 
             string path = File.ReadAllText(FILENAME).Trim();
             if (string.IsNullOrEmpty(path))
             {
-                errors.Add($@"Config file {Path.GetFullPath(FILENAME)} was found empty. Please enter the path to the Subnautica installation.");
-                return Optional<string>.Empty();
+                errors?.Add($@"Config file {Path.GetFullPath(FILENAME)} was found empty. Please enter the path to the Subnautica installation.");
+                return Optional.Empty;
             }
 
-            return Optional<string>.Of(path);
+            if (!Directory.Exists(Path.Combine(path, "Subnautica_Data", "Managed")))
+            {
+                errors?.Add($@"Game installation directory config file {path} is invalid. Please enter the path to the Subnautica installation.");
+                return Optional.Empty;
+            }
+
+            return Optional.Of(path);
         }
     }
 }

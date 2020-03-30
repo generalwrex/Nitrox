@@ -23,7 +23,7 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
             if (scene.name == "XMenu")
             {
                 MultiplayerMenuMods();
-                DiscordController.Main.InitDRPMenu();
+                DiscordRPController.Main.InitializeMenu();
             }
         }
 
@@ -52,7 +52,12 @@ namespace NitroxClient.MonoBehaviours.Gui.MainMenu
             panel.SavedGamesRef = savedGamesRef;
             panel.LoadedMultiplayerRef = LoadedMultiplayer;
 
-            rightSide.groups.Add(LoadedMultiplayer);
+            rightSide.groups.Add(LoadedMultiplayer.GetComponent<MainMenuGroup>());
+
+#if RELEASE
+            // Remove singleplayer button because SP is broken when Nitrox is injected. TODO: Allow SP to work and co-exist with Nitrox MP in the future
+            startButton.SetActive(false);
+#endif
         }
 
         private void ShowMultiplayerMenu()

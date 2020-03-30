@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using NitroxModel.DataStructures.GameLogic;
+using NitroxServer.Serialization;
 
 namespace NitroxServer.UnityStubs
 {
@@ -16,7 +18,7 @@ namespace NitroxServer.UnityStubs
 
         private readonly Dictionary<Type, object> components = new Dictionary<Type, object>();
 
-        public GameObject(ProtobufSerializer.GameObjectData goData)
+        public GameObject(GameObjectData goData)
         {
             IsActive = goData.IsActive;
             Layer = goData.Layer;
@@ -24,6 +26,14 @@ namespace NitroxServer.UnityStubs
             Id = goData.Id;
             ClassId = goData.ClassId;
             Parent = goData.Parent;
+        }
+
+        public override string ToString()
+        {
+            object transform = null;
+            components.TryGetValue(typeof(NitroxTransform), out transform); // Honestly this should never be null every gameObject has a Transform
+
+            return string.Format("Id: {0}, Class Id: {1}, Transform: {2}", Id, ClassId, transform as NitroxTransform);
         }
 
         public void AddComponent(object component, Type componentType)
